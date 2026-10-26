@@ -185,9 +185,65 @@ nonisolated struct LinearizationCore: Sendable {
 
     var layout: VolterraKernelLayout { VolterraKernelLayout(configuration.volterra) }
 
-    /// Phase 2 crossover: the fused Metal kernel wins from K ≈ 300 at 4096-sample blocks.
-    var backend: VolterraBackend {
-        metal != nil && layout.termCount >= 296 && configuration.frameSize >= 4_096 ? .metalGPU : .vDSPFactored
+    /// DPD-apply backend, chosen online from measured apply times. A Metal dispatch has
+    /// a fixed ≈ 0.3–0.5 ms round trip, and GPU speed depends on its clock state and on
+    /// CPU contention, so neither a fixed K threshold nor a one-off calibration picks
+    /// reliably (both chose the slower path at M = 8 on an M5 in some runs). Instead,
+    /// every frame's apply time updates a per-backend average, both backends are tried
+    /// on the first frames, and the slower one is re-probed every 128 frames.
+    private(set) var backend: VolterraBackend = .vDSPFactored
+    private var backendKey: BackendKey?
+    private var applyCost: [VolterraBackend: Double] = [:]
+    private var applySamples: [VolterraBackend: Int] = [:]
+    private var framesSinceProbe = 0
+
+    private struct BackendKey: Equatable {
+        let layout: VolterraKernelLayout
+        let frameSize: Int
+    }
+
+    /// Smallest K for which the GPU is considered; below it vDSP always wins.
+    static let metalCandidateTermCount = 128
+    static let backendExplorationSamples = 4
+    static let backendProbeInterval = 128
+    static let backendCostSmoothing = 0.2
+
+    private var backendCandidates: [VolterraBackend] {
+        metal != nil && layout.order == .third && layout.termCount >= Self.metalCandidateTermCount
+            ? [.vDSPFactored, .metalGPU] : [.vDSPFactored]
+    }
+
+    /// Backend for this frame: explore, exploit the cheaper one, or periodically re-probe.
+    private mutating func backendForFrame(frameSize: Int) -> VolterraBackend {
+        let key = BackendKey(layout: layout, frameSize: frameSize)
+        if key != backendKey {
+            backendKey = key
+            applyCost.removeAll(); applySamples.removeAll(); framesSinceProbe = 0
+        }
+        let candidates = backendCandidates
+        guard candidates.count > 1 else { backend = .vDSPFactored; return .vDSPFactored }
+
+        // Exploration: alternate until each has enough samples (the first is warm-up, not recorded).
+        if let next = candidates.min(by: { (applySamples[$0] ?? 0) < (applySamples[$1] ?? 0) }),
+           (applySamples[next] ?? 0) < Self.backendExplorationSamples {
+            return next
+        }
+        let best = candidates.min { (applyCost[$0] ?? .infinity) < (applyCost[$1] ?? .infinity) } ?? .vDSPFactored
+        backend = best
+        framesSinceProbe += 1
+        if framesSinceProbe >= Self.backendProbeInterval {
+            framesSinceProbe = 0
+            return candidates.first { $0 != best } ?? best
+        }
+        return best
+    }
+
+    private mutating func recordApply(_ backend: VolterraBackend, seconds: Double) {
+        let count = applySamples[backend, default: 0]
+        applySamples[backend] = count + 1
+        guard count > 0 else { return }     // first run per backend includes pipeline/buffer warm-up
+        let a = Self.backendCostSmoothing
+        applyCost[backend] = applyCost[backend].map { (1 - a) * $0 + a * seconds } ?? seconds
     }
 
     // MARK: Control
@@ -257,7 +313,14 @@ nonisolated struct LinearizationCore: Sendable {
         // 2. Predistortion
         mark = clock.now
         interval = signposter.beginInterval("DPD apply")
-        let z = configuration.dpdEnabled ? predistorter.process(u, backend: backend, metal: metal) : u
+        let z: ComplexSignalBlock
+        if configuration.dpdEnabled {
+            let frameBackend = backendForFrame(frameSize: n)
+            z = predistorter.process(u, backend: frameBackend, metal: metal)
+            recordApply(frameBackend, seconds: (clock.now - mark).timeInterval)
+        } else {
+            z = u
+        }
         signposter.endInterval("DPD apply", interval)
         stages[.predistort] = (clock.now - mark).timeInterval
 

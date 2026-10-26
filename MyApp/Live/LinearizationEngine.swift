@@ -38,7 +38,7 @@ nonisolated enum HeadlessProfiler {
         let metal = MetalVolterraEngine()
         print("VolterraDSPPredictor headless profile — \(frames) frames/config, GPU: \(metal?.deviceName ?? "none")")
         print("config                 | frame ms | MS/s   | RT×    | ACLR noDPD→DPD (dBc) | " +
-              ProcessingStage.allCases.map(\.rawValue).joined(separator: " | "))
+              ProcessingStage.allCases.map(\.rawValue).joined(separator: " | ") + " | DPD backend")
 
         var configurations: [(String, LiveConfiguration)] = []
         let rows: [(String, AdaptiveAlgorithm, Int, Int?, Int)] = [
@@ -57,10 +57,12 @@ nonisolated enum HeadlessProfiler {
             c.adaptationInterval = every
             configurations.append((label, c))
         }
-        var frozen = LiveConfiguration()
-        frozen.volterra.memoryDepth = 8
-        frozen.adaptationEnabled = false
-        configurations.append(("Frozen M=8 (apply)", frozen))
+        for depth in [8, 12, 16] {
+            var frozen = LiveConfiguration()
+            frozen.volterra.memoryDepth = depth
+            frozen.adaptationEnabled = false
+            configurations.append(("Frozen M=\(depth) (apply)", frozen))
+        }
 
         // The first quarter of the frames is warm-up; timings are the mean of the raw
         // per-frame values over the rest, so frames that skip adaptation count correctly.
@@ -84,7 +86,7 @@ nonisolated enum HeadlessProfiler {
                 .joined(separator: " | ")
             print(String(format: "%-22@ | %8.3f | %6.2f | %6.4f | %6.1f → %6.1f      | ",
                          label as NSString, frameSeconds * 1000, throughput, throughput * 1e6 / snapshot.sampleRate,
-                         snapshot.aclrWithoutDPD.worstDBc, snapshot.aclrWithDPD.worstDBc) + stages)
+                         snapshot.aclrWithoutDPD.worstDBc, snapshot.aclrWithDPD.worstDBc) + stages + " | " + snapshot.backend.rawValue)
         }
         exit(0)
     }

@@ -134,6 +134,20 @@ struct LinearizationTests {
         #expect(diagonal > full + 30)
     }
 
+    @Test("Online backend selection (vDSP ↔ Metal) does not change the linearization")
+    func backendSelectionIsTransparent() throws {
+        let metal = try #require(MetalVolterraEngine(), "No Metal device")
+        var configuration = LiveConfiguration()
+        configuration.volterra.memoryDepth = 8      // K = 296: both backends are candidates
+        var cpuOnly = LinearizationCore(configuration: configuration)
+        var selecting = LinearizationCore(configuration: configuration, metal: metal)
+        var a = cpuOnly.advance(), b = selecting.advance()
+        for _ in 0..<30 { a = cpuOnly.advance(); b = selecting.advance() }
+        #expect(b.divergenceResets == 0)
+        #expect(abs(a.aclrWithDPD.worstDBc - b.aclrWithDPD.worstDBc) < 0.5)
+        #expect(abs(a.nmseWithDPD - b.nmseWithDPD) < 0.5)
+    }
+
     @Test("Bypassing DPD leaves both PA paths equivalent")
     func bypass() {
         var configuration = LiveConfiguration()
