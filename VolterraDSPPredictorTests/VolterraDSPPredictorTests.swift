@@ -59,15 +59,35 @@ struct KernelLayoutTests {
         }
         #expect(seen == Set(layout.cubicOffset..<layout.termCount))
     }
+
+    @Test("Pruned layouts index exactly the pairs with τ₂ − τ₁ ≤ D", arguments: 1...VolterraConfiguration.maxMemoryDepth)
+    func prunedLayouts(memoryDepth m: Int) {
+        for span in 0..<m {
+            let layout = VolterraKernelLayout(VolterraConfiguration(memoryDepth: m, order: .third, maxPairSpan: span))
+            let expectedPairs = (0..<m).flatMap { a in (a..<m).filter { $0 - a <= span }.map { (a, $0) } }
+            #expect(layout.pairs.map { [$0.0, $0.1] } == expectedPairs.map { [$0.0, $0.1] }, "M = \(m), D = \(span)")
+            #expect(layout.cubicPairCount == expectedPairs.count)
+            #expect(layout.termCount == m + expectedPairs.count * m)
+            #expect(layout.isPruned == (span < m - 1))
+            // Storage order: pair p's taps occupy cubicOffset + p·M ..< cubicOffset + (p+1)·M.
+            for (p, (a, b)) in layout.pairs.enumerated() {
+                #expect(layout.cubicIndex(b, a, 0) == layout.cubicOffset + p * m)
+            }
+        }
+        // Spans beyond M − 1 clamp to the full layout.
+        let clamped = VolterraKernelLayout(VolterraConfiguration(memoryDepth: m, order: .third, maxPairSpan: 99))
+        #expect(clamped == VolterraKernelLayout(VolterraConfiguration(memoryDepth: m, order: .third)))
+    }
 }
 
 // MARK: - Evaluation backends
 
 @Suite("Volterra evaluation backends")
 struct BackendEquivalenceTests {
-    @Test("vDSP factored and regression Φ·h match the scalar reference", arguments: [1, 3, 6])
-    func cpuBackendsMatchScalar(memoryDepth m: Int) {
-        let layout = VolterraKernelLayout(VolterraConfiguration(memoryDepth: m, order: .third))
+    @Test("vDSP factored and regression Φ·h match the scalar reference",
+          arguments: [(1, nil), (3, nil), (6, nil), (6, 0), (6, 2), (8, 1)] as [(Int, Int?)])
+    func cpuBackendsMatchScalar(memoryDepth m: Int, pairSpan: Int?) {
+        let layout = VolterraKernelLayout(VolterraConfiguration(memoryDepth: m, order: .third, maxPairSpan: pairSpan))
         let kernels = VolterraKernels.syntheticPA(layout: layout)
         let input = randomBlock(count: 2_048, seed: 7)
 
@@ -83,14 +103,14 @@ struct BackendEquivalenceTests {
     @Test("Metal GPU kernel matches the scalar reference")
     func metalMatchesScalar() throws {
         let metal = try #require(MetalVolterraEngine(), "No Metal device")
-        for m in [1, 4, 8] {
-            let kernels = VolterraKernels.syntheticPA(layout: VolterraKernelLayout(VolterraConfiguration(memoryDepth: m, order: .third)))
+        for (m, span) in [(1, nil), (4, nil), (8, nil), (8, 0), (8, 2)] as [(Int, Int?)] {
+            let kernels = VolterraKernels.syntheticPA(layout: VolterraKernelLayout(VolterraConfiguration(memoryDepth: m, order: .third, maxPairSpan: span)))
             let input = randomBlock(count: 4_096, seed: 11)
             var reference = VolterraFilter(kernels: kernels)
             var gpu = VolterraFilter(kernels: kernels)
             let expected = reference.process(input, backend: .scalarReference)
             let output = gpu.process(input, backend: .metalGPU, metal: metal)
-            #expect(IdentificationExperiment.nmseDB(output, reference: expected) < -100, "M = \(m)")
+            #expect(IdentificationExperiment.nmseDB(output, reference: expected) < -100, "M = \(m), D = \(String(describing: span))")
         }
     }
 

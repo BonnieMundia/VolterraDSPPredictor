@@ -28,6 +28,11 @@ nonisolated struct VolterraConfiguration: Sendable, Equatable, Hashable {
     var order: VolterraOrder = .third
     /// Include the constant (DC) term h₀.
     var includeConstant: Bool = false
+    /// Kernel pruning: keep only cubic pairs with τ₂ − τ₁ ≤ D (`nil` = every pair).
+    /// Each kept pair keeps its full M-tap run over τ₃, so every backend keeps its
+    /// per-pair structure. A PA's memory makes widely separated x(n−τ₁)·x(n−τ₂)
+    /// products weak, so small D removes many terms at little accuracy cost.
+    var maxPairSpan: Int? = nil
 }
 
 /// Index map from multidimensional kernel coordinates to a flat coefficient vector.
@@ -37,10 +42,13 @@ nonisolated struct VolterraConfiguration: Sendable, Equatable, Hashable {
 ///     [h₀]  [h₁(0) … h₁(M−1)]  [h₃(τ₁,τ₂;τ₃) for τ₁ in 0..<M, τ₂ in τ₁..<M, τ₃ in 0..<M]
 ///
 /// Exploiting the τ₁↔τ₂ symmetry stores M²(M+1)/2 cubic coefficients instead of M³.
+/// With pruning span D, only pairs with τ₂ − τ₁ ≤ D are stored (still M taps each).
 nonisolated struct VolterraKernelLayout: Sendable, Equatable, Hashable {
     let memoryDepth: Int
     let order: VolterraOrder
     let includeConstant: Bool
+    /// Largest stored τ₂ − τ₁, in 0 ... M−1 (M−1 = unpruned).
+    let pairSpan: Int
 
     init(_ configuration: VolterraConfiguration) {
         precondition((1...VolterraConfiguration.maxMemoryDepth).contains(configuration.memoryDepth),
@@ -48,12 +56,16 @@ nonisolated struct VolterraKernelLayout: Sendable, Equatable, Hashable {
         memoryDepth = configuration.memoryDepth
         order = configuration.order
         includeConstant = configuration.includeConstant
+        let full = configuration.memoryDepth - 1
+        pairSpan = min(max(configuration.maxPairSpan ?? full, 0), full)
     }
+
+    var isPruned: Bool { order == .third && pairSpan < memoryDepth - 1 }
 
     var constantCount: Int { includeConstant ? 1 : 0 }
     var linearCount: Int { memoryDepth }
-    /// Number of unordered (τ₁ ≤ τ₂) pairs.
-    var cubicPairCount: Int { order == .third ? memoryDepth * (memoryDepth + 1) / 2 : 0 }
+    /// Number of stored unordered (τ₁ ≤ τ₂) pairs: M(M+1)/2 unpruned.
+    var cubicPairCount: Int { order == .third ? pairRowStart(memoryDepth) : 0 }
     var cubicCount: Int { cubicPairCount * memoryDepth }
     var termCount: Int { constantCount + linearCount + cubicCount }
 
@@ -70,11 +82,28 @@ nonisolated struct VolterraKernelLayout: Sendable, Equatable, Hashable {
         return linearOffset + tau
     }
 
-    /// Flat index of the (τ₁ ≤ τ₂) pair in row-major upper-triangular order.
+    /// Number of stored pairs in rows 0 ..< a. Row i holds b ∈ i ... min(i + D, M − 1),
+    /// i.e. min(M − i, D + 1) pairs: rows i ≤ M − D − 1 are full (D + 1 each), and the
+    /// last D rows shrink by one each.
+    private func pairRowStart(_ a: Int) -> Int {
+        let m = memoryDepth, d = pairSpan
+        let fullRows = m - d
+        if a <= fullRows { return a * (d + 1) }
+        // Σ_{i = M−D}^{a−1} (M − i) = Σ_{j = M−a+1}^{D} j
+        let tail = (d * (d + 1) - (m - a) * (m - a + 1)) / 2
+        return fullRows * (d + 1) + tail
+    }
+
+    /// Whether h₃(τ₁, τ₂; ·) is stored (always true unpruned).
+    func containsPair(_ tau1: Int, _ tau2: Int) -> Bool {
+        abs(tau1 - tau2) <= pairSpan
+    }
+
+    /// Flat index of the (τ₁ ≤ τ₂) pair in row-major order.
     func pairIndex(_ tau1: Int, _ tau2: Int) -> Int {
         let a = min(tau1, tau2), b = max(tau1, tau2)
-        // Row a starts after Σ_{i<a} (M − i) = a·M − a(a−1)/2 entries.
-        return a * memoryDepth - a * (a - 1) / 2 + (b - a)
+        precondition(b - a <= pairSpan, "Pair (\(a), \(b)) is pruned at span \(pairSpan)")
+        return pairRowStart(a) + (b - a)
     }
 
     /// Flat index of h₃(τ₁, τ₂; τ₃). τ₁ and τ₂ may be given in either order.
@@ -84,13 +113,13 @@ nonisolated struct VolterraKernelLayout: Sendable, Equatable, Hashable {
         return cubicOffset + pairIndex(tau1, tau2) * memoryDepth + tau3
     }
 
-    /// (τ₁, τ₂) for every pair, in storage order.
+    /// (τ₁, τ₂) for every stored pair, in storage order.
     var pairs: [(Int, Int)] {
         guard order == .third else { return [] }
         var result: [(Int, Int)] = []
         result.reserveCapacity(cubicPairCount)
         for a in 0..<memoryDepth {
-            for b in a..<memoryDepth { result.append((a, b)) }
+            for b in a...min(a + pairSpan, memoryDepth - 1) { result.append((a, b)) }
         }
         return result
     }

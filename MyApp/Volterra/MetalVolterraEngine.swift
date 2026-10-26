@@ -8,6 +8,7 @@ nonisolated struct VolterraGPUParams {
     var memoryDepth: UInt32
     var hasConstant: UInt32
     var hasCubic: UInt32
+    var pairSpan: UInt32
 }
 
 /// GPU backend for the fused Volterra kernel.
@@ -73,7 +74,8 @@ nonisolated final class MetalVolterraEngine: @unchecked Sendable {
             outputCount: UInt32(n),
             memoryDepth: UInt32(m),
             hasConstant: layout.includeConstant ? 1 : 0,
-            hasCubic: layout.order == .third ? 1 : 0
+            hasCubic: layout.order == .third ? 1 : 0,
+            pairSpan: UInt32(layout.pairSpan)
         )
 
         encoder.setComputePipelineState(pipeline)

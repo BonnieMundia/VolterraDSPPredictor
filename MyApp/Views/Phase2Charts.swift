@@ -135,7 +135,7 @@ struct KernelEnergyMap: View {
         let m = layout.memoryDepth
         var result: [Cell] = []
         for a in 0..<m {
-            for b in 0..<m {
+            for b in 0..<m where layout.containsPair(a, b) {   // pruned pairs stay blank
                 var energy: Float = 0
                 for c in 0..<m {
                     let h = kernels.cubic(a, b, c)

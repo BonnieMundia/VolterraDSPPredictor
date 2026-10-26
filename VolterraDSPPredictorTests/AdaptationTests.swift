@@ -94,6 +94,46 @@ struct LinearizationTests {
         #expect(snapshot.aclrWithoutDPD.worstDBc - snapshot.aclrWithDPD.worstDBc > 12)
     }
 
+    @Test("A pruned M = 8 kernel adapted on 1 frame in 8 still linearizes", arguments: [0, 1])
+    func prunedLiveEngine(pairSpan: Int) {
+        var configuration = LiveConfiguration()
+        configuration.volterra.memoryDepth = 8
+        configuration.volterra.maxPairSpan = pairSpan
+        configuration.adaptationInterval = 8
+        var core = LinearizationCore(configuration: configuration)
+        var snapshot = core.advance()
+        for _ in 0..<40 { snapshot = core.advance() }
+        #expect(snapshot.termCount < 296)
+        #expect(snapshot.divergenceResets == 0)
+        #expect(snapshot.aclrWithoutDPD.worstDBc - snapshot.aclrWithDPD.worstDBc > 12)   // measured 13.9
+    }
+
+    @Test("Pruning removes model capacity on a system that needs cross-terms")
+    func pruningCostsAccuracyWhenCrossTermsMatter() {
+        // Wideband stimulus through a full-kernel M = 4 system, fitted with full and diagonal-only models.
+        var signal = SignalConfiguration()
+        signal.samplesPerSymbol = 2
+        signal.rolloff = 1.0
+        signal.sampleCount = 8_192
+        let x = SignalSynthesizer.generate(signal)
+        var system = VolterraFilter(kernels: .syntheticPA(layout: VolterraKernelLayout(VolterraConfiguration(memoryDepth: 4, order: .third))))
+        let y = system.process(stream: x, blockSize: 1_024, backend: .vDSPFactored)
+
+        func fitNMSE(span: Int?) -> Double {
+            let layout = VolterraKernelLayout(VolterraConfiguration(memoryDepth: 4, order: .third, maxPairSpan: span))
+            var identifier = AdaptiveVolterraIdentifier(layout: layout, parameters: AdaptationParameters(algorithm: .blockRLS, forgettingFactor: 1, delta: 1e-6))
+            var delay = VolterraFilter(kernels: VolterraKernels(layout: layout))
+            for (xb, yb) in zip(x.blocks(ofSize: 1_024), y.blocks(ofSize: 1_024)) {
+                identifier.adapt(regressors: RegressorRows.build(extended: delay.extend(xb), layout: layout), desired: yb)
+            }
+            var model = VolterraFilter(kernels: identifier.kernels)
+            return IdentificationExperiment.nmseDB(model.process(stream: x, blockSize: 1_024, backend: .vDSPFactored), reference: y)
+        }
+        let full = fitNMSE(span: nil), diagonal = fitNMSE(span: 0)
+        #expect(full < -100)
+        #expect(diagonal > full + 30)
+    }
+
     @Test("Bypassing DPD leaves both PA paths equivalent")
     func bypass() {
         var configuration = LiveConfiguration()

@@ -56,6 +56,7 @@ private struct Phase3ControlPanel: View {
                 }
                 Stepper("Memory depth M: \(model.volterra.memoryDepth)",
                         value: $model.volterra.memoryDepth, in: 1...VolterraConfiguration.maxMemoryDepth)
+                PairSpanStepper(volterra: $model.volterra)
                 LabeledContent("Coefficients K", value: "\(model.layout.termCount)")
             }
 

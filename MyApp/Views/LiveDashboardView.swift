@@ -57,6 +57,7 @@ private struct LiveControlPanel: View {
                 Stepper("Memory depth M: \(model.configuration.volterra.memoryDepth)",
                         value: $model.configuration.volterra.memoryDepth,
                         in: 1...VolterraConfiguration.maxMemoryDepth)
+                PairSpanStepper(volterra: $model.configuration.volterra)
                 LabeledContent("Coefficients K", value: "\(model.layout.termCount)")
             }
 
@@ -84,10 +85,9 @@ private struct LiveControlPanel: View {
                         text: String(format: "%.5f", model.configuration.adaptation.forgettingFactor)
                     )
                 }
-                Stepper(value: $model.configuration.adaptationInterval, in: LiveConfiguration.adaptationIntervalRange) {
-                    LabeledContent("Adapt every", value: model.configuration.adaptationInterval == 1
-                                   ? "frame" : "\(model.configuration.adaptationInterval) frames")
-                }
+                Stepper(model.configuration.adaptationInterval == 1
+                        ? "Adapt every frame" : "Adapt every \(model.configuration.adaptationInterval) frames",
+                        value: $model.configuration.adaptationInterval, in: LiveConfiguration.adaptationIntervalRange)
                 .help("Identification runs on one frame in N; the predistorter is applied to every sample")
                 if let warning = model.configuration.adaptation.algorithm.costWarning(termCount: model.layout.termCount) {
                     Label(warning, systemImage: "exclamationmark.triangle")

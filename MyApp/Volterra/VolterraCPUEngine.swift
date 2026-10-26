@@ -47,12 +47,12 @@ nonisolated enum VolterraCPUEngine {
                                 accI += hr[h] * ai + hi[h] * ar
                             }
 
-                            // Σ_{τ₁≤τ₂} Σ_{τ₃} h₃·x(n−τ₁)·x(n−τ₂)·x*(n−τ₃)
+                            // Σ_{τ₁≤τ₂} Σ_{τ₃} h₃·x(n−τ₁)·x(n−τ₂)·x*(n−τ₃), stored pairs only
                             if layout.order == .third {
                                 var h = layout.cubicOffset
                                 for a in 0..<m {
                                     let ar = xr[base - a], ai = xi[base - a]
-                                    for b in a..<m {
+                                    for b in a...min(a + layout.pairSpan, m - 1) {
                                         let br = xr[base - b], bi = xi[base - b]
                                         let pr = ar * br - ai * bi
                                         let pi = ar * bi + ai * br

@@ -7,6 +7,7 @@ struct VolterraGPUParams {
     uint memoryDepth;
     uint hasConstant;
     uint hasCubic;
+    uint pairSpan;      // largest stored tau2 - tau1 (M - 1 = unpruned)
 };
 
 constant uint kMaxMemoryDepth = 16;
@@ -23,7 +24,7 @@ inline float2 conjugate(float2 a) { return float2(a.x, -a.y); }
 /// loads its M-sample input window into registers once, then streams the
 /// coefficient vector (identical for every thread, so it is broadcast from the
 /// constant cache). Coefficient order matches `VolterraKernelLayout`:
-///   [h0] [h1(0..M-1)] [h3(a,b,c) for a<M, b in a..<M, c<M]
+///   [h0] [h1(0..M-1)] [h3(a,b,c) for a<M, b in a...min(a+D, M-1), c<M]
 ///
 /// x: extended input, x(n - tau) = x[n + M - 1 - tau]; length N + M - 1.
 kernel void volterra_evaluate(device const float2 *x          [[buffer(0)]],
@@ -60,7 +61,8 @@ kernel void volterra_evaluate(device const float2 *x          [[buffer(0)]],
 
     if (p.hasCubic != 0) {
         for (uint a = 0; a < M; ++a) {
-            for (uint b = a; b < M; ++b) {
+            const uint bEnd = min(M, a + p.pairSpan + 1);
+            for (uint b = a; b < bEnd; ++b) {
                 const float2 pab = cmul(w[a], w[b]);
                 // g = sum_c h3(a,b;c) * conj(x(n - c))
                 float2 g = float2(0.0f);

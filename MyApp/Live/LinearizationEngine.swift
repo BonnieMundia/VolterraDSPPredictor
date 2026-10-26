@@ -41,13 +41,19 @@ nonisolated enum HeadlessProfiler {
               ProcessingStage.allCases.map(\.rawValue).joined(separator: " | "))
 
         var configurations: [(String, LiveConfiguration)] = []
-        for (label, algorithm, depth, every) in [("NLMS M=4", AdaptiveAlgorithm.nlms, 4, 1), ("RLS  M=4", .rls, 4, 1),
-                                                 ("Block RLS M=4", .blockRLS, 4, 1), ("Block RLS M=4 1/8", .blockRLS, 4, 8),
-                                                 ("NLMS M=8", .nlms, 8, 1), ("RLS  M=8", .rls, 8, 1),
-                                                 ("Block RLS M=8", .blockRLS, 8, 1), ("Block RLS M=8 1/8", .blockRLS, 8, 8)] {
+        let rows: [(String, AdaptiveAlgorithm, Int, Int?, Int)] = [
+            ("NLMS M=4", .nlms, 4, nil, 1), ("RLS  M=4", .rls, 4, nil, 1),
+            ("Block RLS M=4", .blockRLS, 4, nil, 1), ("Block RLS M=4 1/8", .blockRLS, 4, nil, 8),
+            ("NLMS M=8", .nlms, 8, nil, 1), ("RLS  M=8", .rls, 8, nil, 1),
+            ("Block RLS M=8", .blockRLS, 8, nil, 1), ("Block RLS M=8 1/8", .blockRLS, 8, nil, 8),
+            ("Block RLS M=8 D=1", .blockRLS, 8, 1, 1), ("Block RLS M=8 D=1 1/8", .blockRLS, 8, 1, 8),
+            ("Block RLS M=8 D=0 1/8", .blockRLS, 8, 0, 8)
+        ]
+        for (label, algorithm, depth, span, every) in rows {
             var c = LiveConfiguration()
             c.adaptation.algorithm = algorithm
             c.volterra.memoryDepth = depth
+            c.volterra.maxPairSpan = span
             c.adaptationInterval = every
             configurations.append((label, c))
         }
