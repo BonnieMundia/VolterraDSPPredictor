@@ -12,7 +12,7 @@ final class Phase3Model {
 
     // Shared model & adaptation settings (used by identification and DPD).
     var volterra = VolterraConfiguration(memoryDepth: 4, order: .third)
-    var adaptation = AdaptationParameters(algorithm: .rls, forgettingFactor: 0.9999, delta: 1e-2)
+    var adaptation = AdaptationParameters(algorithm: .blockRLS, forgettingFactor: 0.9999, delta: 1e-2)
 
     // Plant.
     var signal = SignalConfiguration()
@@ -31,10 +31,8 @@ final class Phase3Model {
 
     var layout: VolterraKernelLayout { VolterraKernelLayout(volterra) }
 
-    /// RLS costs O(K²) per sample; flag configurations that will be slow.
     var rlsCostWarning: String? {
-        guard adaptation.algorithm == .rls, layout.termCount > 300 else { return nil }
-        return "K = \(layout.termCount): RLS is O(K²) per sample and will take a while. Prefer NLMS or M ≤ 8."
+        adaptation.algorithm.costWarning(termCount: layout.termCount)
     }
 
     var driveLevelDB: Double {

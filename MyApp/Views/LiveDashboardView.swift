@@ -89,9 +89,8 @@ private struct LiveControlPanel: View {
                                    ? "frame" : "\(model.configuration.adaptationInterval) frames")
                 }
                 .help("Identification runs on one frame in N; the predistorter is applied to every sample")
-                if model.configuration.adaptation.algorithm == .rls && model.layout.termCount > 300 {
-                    Label("RLS is O(K²) per sample — expect a low frame rate at K = \(model.layout.termCount).",
-                          systemImage: "exclamationmark.triangle")
+                if let warning = model.configuration.adaptation.algorithm.costWarning(termCount: model.layout.termCount) {
+                    Label(warning, systemImage: "exclamationmark.triangle")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

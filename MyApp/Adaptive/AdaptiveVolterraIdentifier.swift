@@ -15,6 +15,17 @@ nonisolated enum AdaptiveAlgorithm: String, CaseIterable, Identifiable, Sendable
 
     /// Whether λ / δ apply (both RLS variants).
     var usesForgettingFactor: Bool { self != .nlms }
+
+    /// Sample-by-sample RLS is kept as the textbook reference, but it is O(K²) per
+    /// sample: 25.8 ms per 4096-sample frame at K = 44 and 350 ms at K = 296 (Release,
+    /// Apple M5). Above K ≈ 60 it misses a 50 ms frame budget, so flag it from there.
+    static let rlsCostWarningTermCount = 60
+
+    func costWarning(termCount: Int) -> String? {
+        guard self == .rls, termCount > Self.rlsCostWarningTermCount else { return nil }
+        return "Sample-by-sample RLS is O(K²) per sample and slow at K = \(termCount). " +
+            "Block RLS solves the same least-squares problem several times faster."
+    }
 }
 
 nonisolated struct AdaptationParameters: Sendable, Equatable, Hashable {

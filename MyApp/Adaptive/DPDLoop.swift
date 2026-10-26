@@ -6,7 +6,7 @@ nonisolated struct DPDConfiguration: Sendable, Equatable, Hashable {
     /// λ must keep a memory of several blocks (1/(1−λ) = 10 000 samples here): with
     /// λ = 0.999 the post-inverse overfits the latest block and the frozen
     /// predistorter produces > 20 dB PAPR spikes on peaks it has not seen recently.
-    var adaptation = AdaptationParameters(algorithm: .rls, forgettingFactor: 0.9999, delta: 1e-2)
+    var adaptation = AdaptationParameters(algorithm: .blockRLS, forgettingFactor: 0.9999, delta: 1e-2)
     /// Number of passes of the stimulus through the closed loop.
     var passes = 4
     var blockSize = 1_024

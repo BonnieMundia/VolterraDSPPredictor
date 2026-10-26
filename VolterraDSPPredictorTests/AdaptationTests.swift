@@ -42,6 +42,14 @@ struct IdentificationTests {
         #expect(last < first - 20)
     }
 
+    @Test("Only sample-by-sample RLS above the cost threshold is flagged")
+    func costWarning() {
+        #expect(AdaptiveAlgorithm.rls.costWarning(termCount: 44) == nil)     // M = 4
+        #expect(AdaptiveAlgorithm.rls.costWarning(termCount: 80) != nil)     // M = 5
+        #expect(AdaptiveAlgorithm.blockRLS.costWarning(termCount: 296) == nil)
+        #expect(AdaptiveAlgorithm.nlms.costWarning(termCount: 296) == nil)
+    }
+
     @Test("Cholesky solve matches a known SPD system")
     func choleskySolve() throws {
         // A = [[4, 2, 0.4], [2, 5, 1], [0.4, 1, 3]], x = [1, −2, 0.5] → b = A·x
