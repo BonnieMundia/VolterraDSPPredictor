@@ -84,6 +84,11 @@ private struct LiveControlPanel: View {
                         text: String(format: "%.5f", model.configuration.adaptation.forgettingFactor)
                     )
                 }
+                Stepper(value: $model.configuration.adaptationInterval, in: LiveConfiguration.adaptationIntervalRange) {
+                    LabeledContent("Adapt every", value: model.configuration.adaptationInterval == 1
+                                   ? "frame" : "\(model.configuration.adaptationInterval) frames")
+                }
+                .help("Identification runs on one frame in N; the predistorter is applied to every sample")
                 if model.configuration.adaptation.algorithm == .rls && model.layout.termCount > 300 {
                     Label("RLS is O(K²) per sample — expect a low frame rate at K = \(model.layout.termCount).",
                           systemImage: "exclamationmark.triangle")

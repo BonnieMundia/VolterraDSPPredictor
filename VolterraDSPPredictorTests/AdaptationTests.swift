@@ -75,6 +75,17 @@ struct LinearizationTests {
         #expect(evm < 1.5)                                                               // measured 0.67 %
     }
 
+    @Test("Adapting on a subset of frames still linearizes", arguments: [4, 8])
+    func subsampledAdaptation(interval: Int) {
+        var configuration = LiveConfiguration()
+        configuration.adaptationInterval = interval
+        var core = LinearizationCore(configuration: configuration)
+        var snapshot = core.advance()
+        for _ in 0..<40 { snapshot = core.advance() }
+        #expect(snapshot.divergenceResets == 0)
+        #expect(snapshot.aclrWithoutDPD.worstDBc - snapshot.aclrWithDPD.worstDBc > 12)
+    }
+
     @Test("Bypassing DPD leaves both PA paths equivalent")
     func bypass() {
         var configuration = LiveConfiguration()

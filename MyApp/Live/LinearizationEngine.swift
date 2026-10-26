@@ -41,13 +41,14 @@ nonisolated enum HeadlessProfiler {
               ProcessingStage.allCases.map(\.rawValue).joined(separator: " | "))
 
         var configurations: [(String, LiveConfiguration)] = []
-        for (label, algorithm, depth) in [("NLMS M=4", AdaptiveAlgorithm.nlms, 4), ("RLS  M=4", .rls, 4),
-                                          ("Block RLS M=4", .blockRLS, 4),
-                                          ("NLMS M=8", .nlms, 8), ("RLS  M=8", .rls, 8),
-                                          ("Block RLS M=8", .blockRLS, 8)] {
+        for (label, algorithm, depth, every) in [("NLMS M=4", AdaptiveAlgorithm.nlms, 4, 1), ("RLS  M=4", .rls, 4, 1),
+                                                 ("Block RLS M=4", .blockRLS, 4, 1), ("Block RLS M=4 1/8", .blockRLS, 4, 8),
+                                                 ("NLMS M=8", .nlms, 8, 1), ("RLS  M=8", .rls, 8, 1),
+                                                 ("Block RLS M=8", .blockRLS, 8, 1), ("Block RLS M=8 1/8", .blockRLS, 8, 8)] {
             var c = LiveConfiguration()
             c.adaptation.algorithm = algorithm
             c.volterra.memoryDepth = depth
+            c.adaptationInterval = every
             configurations.append((label, c))
         }
         var frozen = LiveConfiguration()
@@ -55,16 +56,29 @@ nonisolated enum HeadlessProfiler {
         frozen.adaptationEnabled = false
         configurations.append(("Frozen M=8 (apply)", frozen))
 
+        // The first quarter of the frames is warm-up; timings are the mean of the raw
+        // per-frame values over the rest, so frames that skip adaptation count correctly.
+        let warmUp = max(frames / 4, 1)
         for (label, configuration) in configurations {
             var core = LinearizationCore(configuration: configuration, metal: metal)
             var snapshot = core.advance()
-            for _ in 1..<frames { snapshot = core.advance() }
+            var frameTotal = 0.0
+            var stageTotals: [ProcessingStage: Double] = [:]
+            for f in 1..<max(frames, warmUp + 1) {
+                snapshot = core.advance()
+                guard f >= warmUp else { continue }
+                frameTotal += snapshot.rawFrameSeconds
+                for (stage, seconds) in snapshot.rawStageSeconds { stageTotals[stage, default: 0] += seconds }
+            }
+            let measured = Double(max(frames, warmUp + 1) - warmUp)
+            let frameSeconds = frameTotal / measured
+            let throughput = Double(configuration.frameSize) / frameSeconds / 1e6
             let stages = ProcessingStage.allCases
-                .map { String(format: "%.3f", (snapshot.stageSeconds[$0] ?? 0) * 1000) }
+                .map { String(format: "%.3f", (stageTotals[$0] ?? 0) / measured * 1000) }
                 .joined(separator: " | ")
             print(String(format: "%-22@ | %8.3f | %6.2f | %6.4f | %6.1f → %6.1f      | ",
-                         label as NSString, snapshot.frameSeconds * 1000, snapshot.throughputMSps,
-                         snapshot.realTimeFactor, snapshot.aclrWithoutDPD.worstDBc, snapshot.aclrWithDPD.worstDBc) + stages)
+                         label as NSString, frameSeconds * 1000, throughput, throughput * 1e6 / snapshot.sampleRate,
+                         snapshot.aclrWithoutDPD.worstDBc, snapshot.aclrWithDPD.worstDBc) + stages)
         }
         exit(0)
     }

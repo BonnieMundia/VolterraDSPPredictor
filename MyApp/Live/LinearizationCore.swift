@@ -13,6 +13,12 @@ nonisolated struct LiveConfiguration: Sendable, Equatable {
     var adaptation = AdaptationParameters(algorithm: .blockRLS, forgettingFactor: 0.9999, delta: 1e-2)
     var dpdEnabled = true
     var adaptationEnabled = true
+    /// Run identification on one frame in every `adaptationInterval` (1 = every frame).
+    /// The predistorter is still applied to every sample. A PA drifts slowly
+    /// compared with a frame (33 µs here), so adapting on a subset of frames trades
+    /// convergence speed for throughput, as production DPD loops do.
+    var adaptationInterval = 1
+    static let adaptationIntervalRange = 1...32
     /// Observation-receiver SNR (dB); `nil` = ideal feedback.
     var feedbackSNRdB: Double? = 70
     /// Samples per real-time frame (one DPD block / one coefficient update).
@@ -86,6 +92,11 @@ nonisolated struct LiveSnapshot: Sendable {
     /// Smoothed seconds per frame for each stage.
     let stageSeconds: [ProcessingStage: Double]
     let frameSeconds: Double
+    /// Unsmoothed timings of this frame alone. Averaging these over many frames gives
+    /// the true mean cost when adaptation runs on only some frames; the smoothed values
+    /// above depend on how recently the last adapting frame ran.
+    let rawStageSeconds: [ProcessingStage: Double]
+    let rawFrameSeconds: Double
 
     let termCount: Int
     let backend: VolterraBackend
@@ -276,8 +287,10 @@ nonisolated struct LinearizationCore: Sendable {
         // 4. Indirect-learning adaptation: post-inverse maps ỹ → z, then copy to the DPD.
         mark = clock.now
         interval = signposter.beginInterval("Adapt")
+        // The delay line advances every frame so regressors stay aligned on frames that do adapt.
         let extended = postInverseDelay.extend(linearizedNormalized)
-        if configuration.dpdEnabled && configuration.adaptationEnabled {
+        let adaptEvery = max(configuration.adaptationInterval, 1)
+        if configuration.dpdEnabled && configuration.adaptationEnabled && frame % adaptEvery == 0 {
             let rows = RegressorRows.build(extended: extended, layout: layout)
             identifier.adapt(regressors: rows, desired: z)
             if identifier.diverged {
@@ -334,6 +347,8 @@ nonisolated struct LinearizationCore: Sendable {
             constellationExtent: Double(configuration.signal.kind.qamOrder ?? 16).squareRoot(),
             stageSeconds: smoothedStages,
             frameSeconds: smoothedFrameSeconds,
+            rawStageSeconds: stages,
+            rawFrameSeconds: frameSeconds,
             termCount: layout.termCount,
             backend: backend,
             status: status,
