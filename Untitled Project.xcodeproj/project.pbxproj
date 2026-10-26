@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* MyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2CB61171308FE67B00C198D4 /* VolterraDSPPredictorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VolterraDSPPredictorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +17,20 @@
 			path = MyApp;
 			sourceTree = "<group>";
 		};
+		2CB61172308FE67B00C198D4 /* VolterraDSPPredictorTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = VolterraDSPPredictorTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		000000000000000130000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		2CB6116E308FE67B00C198D4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
 			);
@@ -31,6 +42,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000010 /* MyApp */,
+				2CB61172308FE67B00C198D4 /* VolterraDSPPredictorTests */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -39,6 +51,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000120 /* MyApp.app */,
+				2CB61171308FE67B00C198D4 /* VolterraDSPPredictorTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -64,6 +77,24 @@
 			productReference = 000000000000000000000120 /* MyApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		2CB61170308FE67B00C198D4 /* VolterraDSPPredictorTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2CB61177308FE67B00C198D4 /* Build configuration list for PBXNativeTarget "VolterraDSPPredictorTests" */;
+			buildPhases = (
+				2CB6116D308FE67B00C198D4 /* Sources */,
+				2CB6116E308FE67B00C198D4 /* Frameworks */,
+				2CB6116F308FE67B00C198D4 /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				2CB61172308FE67B00C198D4 /* VolterraDSPPredictorTests */,
+			);
+			name = VolterraDSPPredictorTests;
+			productName = VolterraDSPPredictorTests;
+			productReference = 2CB61171308FE67B00C198D4 /* VolterraDSPPredictorTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -71,11 +102,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2630;
+				LastSwiftUpdateCheck = 2710;
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					000000000000000100000000 = {
 						CreatedOnToolsVersion = 26.3;
+					};
+					2CB61170308FE67B00C198D4 = {
+						CreatedOnToolsVersion = 27.1;
 					};
 				};
 			};
@@ -94,6 +128,7 @@
 			projectRoot = "";
 			targets = (
 				000000000000000100000000 /* MyApp */,
+				2CB61170308FE67B00C198D4 /* VolterraDSPPredictorTests */,
 			);
 		};
 /* End PBXProject section */
@@ -104,10 +139,20 @@
 			files = (
 			);
 		};
+		2CB6116F308FE67B00C198D4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		000000000000000120000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		2CB6116D308FE67B00C198D4 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
 			);
@@ -321,6 +366,56 @@
 			};
 			name = Release;
 		};
+		2CB61175308FE67B00C198D4 /* Debug configuration for PBXNativeTarget "VolterraDSPPredictorTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.VolterraDSPPredictorTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MyApp.app/Contents/MacOS/MyApp";
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		2CB61176308FE67B00C198D4 /* Release configuration for PBXNativeTarget "VolterraDSPPredictorTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.VolterraDSPPredictorTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MyApp.app/Contents/MacOS/MyApp";
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -337,6 +432,14 @@
 			buildConfigurations = (
 				000000000000000111000000 /* Debug configuration for PBXNativeTarget "MyApp" */,
 				000000000000000112000000 /* Release configuration for PBXNativeTarget "MyApp" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		2CB61177308FE67B00C198D4 /* Build configuration list for PBXNativeTarget "VolterraDSPPredictorTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2CB61175308FE67B00C198D4 /* Debug configuration for PBXNativeTarget "VolterraDSPPredictorTests" */,
+				2CB61176308FE67B00C198D4 /* Release configuration for PBXNativeTarget "VolterraDSPPredictorTests" */,
 			);
 			defaultConfigurationName = Release;
 		};
