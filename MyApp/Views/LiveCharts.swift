@@ -164,9 +164,21 @@ struct ErrorConvergenceChart: View {
         .chartLegend(position: .top, alignment: .leading)
     }
 
+    /// Points drawn per path. The history holds 480 bins; averaging adjacent bins keeps
+    /// the trace's shape (unlike decimation, which can drop spikes) at half the marks.
+    static let maxPlottedPoints = 240
+
     private var points: [PlotPoint] {
-        history.map { PlotPoint(x: Double($0.iteration), y: $0.withoutDPDDB, series: LiveSeries.withoutDPD) }
-            + history.map { PlotPoint(x: Double($0.iteration), y: $0.withDPDDB, series: LiveSeries.withDPD) }
+        let bin = max(1, (history.count + Self.maxPlottedPoints - 1) / Self.maxPlottedPoints)
+        let groups = stride(from: 0, to: history.count, by: bin).map { history[$0..<min($0 + bin, history.count)] }
+        func averaged(_ value: KeyPath<ErrorHistoryPoint, Double>, series: String) -> [PlotPoint] {
+            groups.compactMap { group in
+                guard let last = group.last else { return nil }
+                let mean = group.reduce(0) { $0 + $1[keyPath: value] } / Double(group.count)
+                return PlotPoint(x: Double(last.iteration), y: mean, series: series)
+            }
+        }
+        return averaged(\.withoutDPDDB, series: LiveSeries.withoutDPD) + averaged(\.withDPDDB, series: LiveSeries.withDPD)
     }
 }
 

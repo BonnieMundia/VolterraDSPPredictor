@@ -2,15 +2,21 @@ import Foundation
 import Observation
 
 /// Main-actor state for the live dashboard. Drives the engine in a loop and
-/// publishes each frame's snapshot; control edits are forwarded between frames.
+/// publishes snapshots at a capped rate; control edits are forwarded between frames.
 @Observable
 final class LiveDashboardModel {
     var configuration = LiveConfiguration()
     private(set) var snapshot: LiveSnapshot?
     private(set) var isRunning = false
 
-    /// Frame pacing (≈ 20 fps). Chart redraw, not DSP, is the main-thread cost.
+    /// Engine pacing (≈ 20 frames/s of DSP).
     static let minimumFrameInterval: Duration = .milliseconds(50)
+    /// UI refresh cap (≈ 10 Hz); the engine keeps adapting between published snapshots.
+    /// Each dashboard redraw costs ≈ 20–25 ms of main thread, so publishing at the
+    /// engine's 20 Hz kept it 44 % busy (Release, standalone) versus 26 % at 10 Hz.
+    /// Sessions launched from Xcode run the main thread about 3× busier, so measure
+    /// UI load on a standalone launch.
+    static let minimumPublishInterval: Duration = .milliseconds(100)
 
     private let engine: LinearizationEngine
     private var loop: Task<Void, Never>?
@@ -33,6 +39,7 @@ final class LiveDashboardModel {
         loop = Task { [engine] in
             var sent = LiveConfiguration()
             let clock = ContinuousClock()
+            var lastPublish = clock.now - Self.minimumPublishInterval
             while !Task.isCancelled {
                 let frameStart = clock.now
                 // Forward edits made since the previous frame (applied atomically between frames).
@@ -41,7 +48,10 @@ final class LiveDashboardModel {
                     await engine.update(sent)
                 }
                 let next = await engine.advance()
-                snapshot = next
+                if clock.now - lastPublish >= Self.minimumPublishInterval {
+                    snapshot = next
+                    lastPublish = clock.now
+                }
                 // Yield so the UI renders; pace to the refresh cap.
                 let remaining = Self.minimumFrameInterval - (clock.now - frameStart)
                 try? await Task.sleep(for: max(remaining, .milliseconds(1)))
