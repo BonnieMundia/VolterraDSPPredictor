@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VolterraDSPPredictor — Technical Documentation (Boniface Mundia)</title>
+<style>
+  @page { size: A4; margin: 15mm 15mm 16mm 15mm; }
+  :root { --ink: #1b1f24; --muted: #5a6370; --rule: #d5dae1; --accent: #1f5fbf; --tint: #f3f6fa; }
+  html { font-size: 9.7pt; }
+  body { font-family: "Charter", "Iowan Old Style", Georgia, serif; color: var(--ink); line-height: 1.42; margin: 0; }
+  h1, h2, h3, h4, .sans, figcaption, table, .callout, .toc { font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+  h1 { font-size: 2.1rem; margin: 0 0 .3rem; letter-spacing: -.01em; }
+  h2 { font-size: 1.38rem; margin: 1.5rem 0 .5rem; padding-bottom: .2rem; border-bottom: 2px solid var(--accent); break-after: avoid; }
+  h3 { font-size: 1.1rem; margin: 1.1rem 0 .35rem; break-after: avoid; }
+  h4 { font-size: .98rem; margin: .8rem 0 .25rem; color: var(--accent); break-after: avoid; }
+  p { margin: .38rem 0; text-align: justify; hyphens: auto; }
+  ul, ol { margin: .3rem 0 .4rem 1.2rem; padding: 0; }
+  li { margin: .12rem 0; }
+  code, .mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: .86em; }
+  pre { font-family: "SF Mono", Menlo, monospace; font-size: 8.1pt; line-height: 1.35; background: var(--tint); border: 1px solid var(--rule); border-radius: 5px; padding: .55rem .7rem; white-space: pre-wrap; break-inside: avoid; margin: .45rem 0; }
+  .eq { font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif; font-size: 1.04rem; text-align: center; margin: .5rem 0; padding: .35rem; background: var(--tint); border-radius: 4px; break-inside: avoid; }
+  .eq .n { float: right; color: var(--muted); font-size: .85rem; font-family: -apple-system, sans-serif; }
+  i.v { font-family: "Cambria Math", "Times New Roman", serif; }
+  figure { margin: .7rem 0; break-inside: avoid; text-align: center; }
+  figure img { max-width: 100%; border: 1px solid var(--rule); border-radius: 4px; }
+  figcaption { font-size: 8.4pt; color: var(--muted); text-align: left; margin-top: .25rem; line-height: 1.35; }
+  figcaption b { color: var(--ink); }
+  table { border-collapse: collapse; width: 100%; font-size: 8.4pt; margin: .5rem 0; break-inside: avoid; }
+  th, td { border-bottom: 1px solid var(--rule); padding: .22rem .4rem; text-align: left; vertical-align: top; }
+  th { background: var(--tint); font-weight: 600; }
+  td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+  .callout { background: var(--tint); border-left: 4px solid var(--accent); padding: .45rem .7rem; margin: .6rem 0; font-size: 8.9pt; break-inside: avoid; border-radius: 0 4px 4px 0; }
+  .callout.warn { border-left-color: #c77700; }
+  .cover { height: 245mm; display: flex; flex-direction: column; justify-content: space-between; break-after: page; }
+  .cover .kicker { font-family: -apple-system, sans-serif; text-transform: uppercase; letter-spacing: .14em; color: var(--accent); font-size: .85rem; font-weight: 600; }
+  .cover .subtitle { font-size: 1.25rem; color: var(--muted); margin-top: .4rem; font-family: -apple-system, sans-serif; }
+  .cover .meta { font-family: -apple-system, sans-serif; font-size: .88rem; color: var(--muted); }
+  .cover img { width: 100%; border-radius: 6px; border: 1px solid var(--rule); }
+  .abstract { font-size: .95rem; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: .6rem 0; }
+  .toc { font-size: 9pt; columns: 2; column-gap: 2rem; }
+  .toc div { margin: .1rem 0; }
+  .toc .l2 { padding-left: 1rem; color: var(--muted); }
+  .pb { break-before: page; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+  .small { font-size: 8.6pt; }
+  .refs p { text-align: left; font-size: 8.6pt; margin: .2rem 0; padding-left: 1.9rem; text-indent: -1.9rem; }
+  svg text { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- ============================== COVER ============================== -->
+<section class="cover">
+  <div>
+    <div class="kicker">Technical documentation · Version 1.0 · October 2026</div>
+    <h1>VolterraDSPPredictor</h1>
+    <div class="subtitle">Real-time Volterra-series modelling and adaptive digital predistortion of RF power amplifiers on Apple Silicon</div>
+  </div>
+  <img src="screenshots/live_default.png" alt="Live DPD dashboard">
+  <div class="abstract">
+    <p><b>Abstract.</b> VolterraDSPPredictor is a native macOS application that simulates the nonlinearity and memory effects of a wideband RF power amplifier (PA), models them with a truncated complex-baseband Volterra series, and linearizes the amplifier with a closed-loop adaptive digital predistorter (DPD) based on the indirect learning architecture. The whole chain runs as a streaming pipeline: stimulus synthesis, Volterra predistortion, a virtual PA, NLMS/RLS/Block-RLS identification, Welch spectrum estimation, and ACLR/NMSE/EVM measurement. It is written in Swift on Accelerate (vDSP/BLAS) and Metal, with no third-party dependencies. This document explains the research motivation and the gap the project addresses, gives the mathematical models and the implementation behind each stage, and provides a step-by-step guide to setting up the simulation and running nine reproducible experiment scenarios. On the default 16-QAM, 25 MHz scenario at 122.88 MS/s, a 44-coefficient Volterra DPD improves the worst-case ACLR from −31.7 to −45.3 dBc, NMSE from −23.4 to −39.4 dB, and symbol EVM from 4.9 % to 0.7 %.</p>
+  </div>
+  <div class="meta"><b>Author:</b> Boniface Mundia · Repository: github.com/BonnieMundia/VolterraDSPPredictor · Platform: macOS 27+, Apple Silicon, Xcode 27+ · Language: Swift 6, Metal Shading Language</div>
+</section>
+
+<!-- ============================== TOC ============================== -->
+<h2 style="margin-top:0">Contents</h2>
+<div class="toc">
+  <div>1 Introduction and motivation</div>
+  <div>2 Background</div>
+  <div class="l2">2.1 PA nonlinearity and memory · 2.2 Volterra series · 2.3 DPD and indirect learning · 2.4 Adaptive identification</div>
+  <div>3 Research gap and contributions</div>
+  <div>4 System architecture</div>
+  <div>5 Models and implementation</div>
+  <div class="l2">5.1 Stimulus · 5.2 Virtual PA · 5.3 Kernel layout and pruning · 5.4 Evaluation backends · 5.5 Identification · 5.6 Closed-loop DPD · 5.7 Metrics · 5.8 Backend selection</div>
+  <div>6 Setup guide</div>
+  <div>7 Using the application</div>
+  <div>8 Simulation scenarios (S1–S9)</div>
+  <div>9 Performance results</div>
+  <div>10 Discussion, limitations and future work</div>
+  <div>References</div>
+  <div>Appendix A — Parameter reference</div>
+</div>
+
+<!-- ============================== 1 ============================== -->
+<h2>1 Introduction and motivation</h2>
+<p>The power amplifier is the largest consumer of energy in a radio transmitter, and its efficiency peaks near saturation, where it is also most nonlinear. Modern waveforms make the problem worse. OFDM and high-order QAM signals have peak-to-average power ratios (PAPR) of 7–12 dB and occupy tens to hundreds of megahertz. A PA driven with such a signal compresses its peaks (AM/AM conversion), rotates their phase (AM/PM conversion), and responds differently depending on the recent signal history (<i>memory effects</i>, caused by bias networks, matching dispersion and thermal time constants). The result is in-band error, which raises EVM and costs throughput, and spectral regrowth into adjacent channels, which is regulated through the adjacent-channel leakage ratio (ACLR) [14].</p>
+<p>The traditional remedy is <i>back-off</i>: operate the PA several dB below saturation. This trades linearity for efficiency, often leaving the PA at 10–20 % efficiency. <b>Digital predistortion</b> takes the opposite approach. It places an inverse nonlinearity in the digital baseband so that the cascade DPD → PA is linear, which lets the PA run closer to saturation [9, 16, 21]. Because PA behaviour drifts with temperature, supply voltage, carrier frequency and ageing, the predistorter must be <i>identified and adapted online</i> from a feedback (observation) receiver.</p>
+<p>VolterraDSPPredictor is a complete, inspectable laboratory for this problem. It lets a researcher or student change the PA, the stimulus, the model structure and the adaptive algorithm while the loop is running, and see the effect immediately in the spectrum, the constellation, the convergence trace and the per-stage compute profile.</p>
+
+<!-- ============================== 2 ============================== -->
+<h2>2 Background</h2>
+<h3>2.1 PA nonlinearity and memory</h3>
+<p>At complex baseband, a memoryless PA is described by its AM/AM curve <i class="v">A</i>(<i class="v">r</i>) and AM/PM curve Φ(<i class="v">r</i>) of the input envelope <i class="v">r</i> = |<i class="v">x</i>|: <i class="v">y</i> = <i class="v">A</i>(<i class="v">r</i>)·e<sup><i class="v">j</i>Φ(<i class="v">r</i>)</sup>·<i class="v">x</i>/<i class="v">r</i>. Two classic parametric models are used here: the <b>Saleh</b> model of travelling-wave-tube amplifiers [2] and the <b>modified Rapp</b> model of solid-state PAs [3], which has a tunable saturation knee. Memory is introduced with a <b>Wiener–Hammerstein</b> structure, a linear filter, then a static nonlinearity, then a second linear filter. In this structure, the response to a sample depends on several past samples, which no AM/AM–AM/PM curve can capture [15].</p>
+
+<h3>2.2 The Volterra series</h3>
+<p>The Volterra series is the most general causal, time-invariant, finite-memory nonlinear model: a Taylor series with memory [1]. For a band-pass PA represented at complex baseband, only odd-order terms with one more unconjugated than conjugated factor fall back into the carrier zone. Truncated at order <i class="v">P</i> = 3 and memory depth <i class="v">M</i>, the model is</p>
+<div class="eq">y(n) = h₀ + Σ<sub>τ</sub> h₁(τ)·x(n−τ) + Σ<sub>τ₁≤τ₂</sub> Σ<sub>τ₃</sub> h₃(τ₁,τ₂;τ₃)·x(n−τ₁)·x(n−τ₂)·x*(n−τ₃) <span class="n">(1)</span></div>
+<p>with τ, τ₁, τ₂, τ₃ ∈ {0, …, <i class="v">M</i>−1}. Even-order kernels produce only DC and 2<i class="v">f</i><sub>c</sub> products, which the PA output network filters out. The τ₁ ↔ τ₂ symmetry of the product <i class="v">x</i>(<i class="v">n</i>−τ₁)<i class="v">x</i>(<i class="v">n</i>−τ₂) means that only τ₁ ≤ τ₂ needs to be stored, so the cubic kernel has <i class="v">M</i>²(<i class="v">M</i>+1)/2 coefficients instead of <i class="v">M</i>³. The model is <b>linear in its coefficients</b>, which is what makes least-squares identification possible: stacking the regressors φ(<i class="v">n</i>) into a matrix Φ gives <b>y</b> = Φ<b>h</b>.</p>
+<p>Because the coefficient count grows cubically with memory, most practical DPD work uses pruned special cases: the memory polynomial (MP) [5, 6], the generalized memory polynomial (GMP) [4], and dynamic-deviation-reduction (DDR) Volterra models [8]. Tehrani <i>et al.</i> [18] compared their complexity–accuracy trade-offs systematically.</p>
+
+<h3>2.3 Digital predistortion and the indirect learning architecture</h3>
+<p>The ideal predistorter is the PA's pre-inverse, which is not directly measurable. The <b>indirect learning architecture</b> (ILA) [7] identifies a <i>post-inverse</i> instead. The PA output is normalized by the target gain <i class="v">G</i>, ỹ = <i class="v">y</i>/<i class="v">G</i>, and a Volterra filter is fitted that maps ỹ back to the PA input <i class="v">z</i>. Its coefficients are then copied into the predistorter. For a <i class="v">P</i>th-order inverse, the post- and pre-inverses coincide [1], so at convergence PA(DPD(<i class="v">u</i>)) ≈ <i class="v">G</i>·<i class="v">u</i>.</p>
+
+<h3>2.4 Adaptive identification</h3>
+<p>Three estimators are implemented. With a-priori error <i class="v">e</i>(<i class="v">n</i>) = <i class="v">d</i>(<i class="v">n</i>) − φ<sup>T</sup>(<i class="v">n</i>)<b>h</b>(<i class="v">n</i>−1):</p>
+<ul>
+<li><b>NLMS</b> [10]: <b>h</b> ← <b>h</b> + μ·<i class="v">e</i>·φ* / (ε + ‖φ‖²). Cost O(<i class="v">K</i>) per sample. Convergence slows down when the regressors are correlated.</li>
+<li><b>RLS</b> [10, 11]: minimizes Σ λ<sup>n−i</sup>|<i class="v">e</i>(<i class="v">i</i>)|² with the inverse correlation matrix <b>P</b> updated by a rank-1 recursion. It converges in about 2<i class="v">K</i> samples regardless of conditioning, but costs O(<i class="v">K</i>²) per sample.</li>
+<li><b>Block RLS</b>: the same exponentially weighted least-squares cost, solved once per block of <i class="v">N</i> samples from accumulated normal equations. The O(<i class="v">N</i>·<i class="v">K</i>²) work runs as BLAS matrix products instead of <i class="v">N</i> sequential rank-1 updates.</li>
+</ul>
+
+<!-- ============================== 3 ============================== -->
+<h2>3 Research gap and contributions</h2>
+<p>DPD is a mature research field, but the way it is usually studied leaves several gaps. VolterraDSPPredictor is designed to address the following five.</p>
+<table>
+<tr><th style="width:24%">Gap</th><th style="width:38%">Typical state of practice</th><th>How this project addresses it</th></tr>
+<tr><td><b>G1 · Offline, batch-oriented studies</b></td><td>Most published DPD results are produced by offline scripts. A record is captured, coefficients are solved in one batch, and results are reported as static plots. The dynamics of the closed loop, such as convergence, tracking and divergence recovery, are rarely visible.</td><td>A <b>streaming closed-loop pipeline</b> advances frame by frame (4,096 samples). Every parameter can be changed while it runs, and the effect appears in the spectrum, error trace and constellation within a fraction of a second. Divergence is detected and recovered automatically.</td></tr>
+<tr><td><b>G2 · Full Volterra treated as impractical</b></td><td>Because <i>K</i> grows as O(<i>M</i>³), full Volterra kernels are usually dismissed in favour of MP/GMP. Few open tools quantify the real cost of evaluating and adapting a full kernel on modern hardware.</td><td>Evaluates <b>true multidimensional Volterra kernels</b> (<i>P</i> = 3, <i>M</i> ≤ 16, up to <i>K</i> = 2,192). It exploits kernel symmetry, offers <b>cross-term-span pruning</b> as a continuous knob between full Volterra and a diagonal model, and measures the cost of each choice per stage.</td></tr>
+<tr><td><b>G3 · Heterogeneous SoCs under-explored</b></td><td>DPD acceleration research targets FPGAs, ASICs or discrete GPUs. Unified-memory systems-on-chip, where CPU vector units and the GPU share one address space, are seldom evaluated, and backend choice is usually fixed at design time.</td><td>Four interchangeable backends: scalar reference, vDSP-factored, regression Φ·<b>h</b>, and a fused Metal compute kernel. They are cross-validated to ≈10⁻⁶, and an <b>online, median-based backend selector</b> picks the faster one from live timings.</td></tr>
+<tr><td><b>G4 · Algorithms compared in isolation</b></td><td>NLMS, RLS and block least-squares results come from different papers with different PAs, stimuli and metrics, so they are hard to compare.</td><td>NLMS, RLS and Block RLS share one regressor builder, one PA and one set of metrics, with <b>bit-reproducible seeds</b>. A step-size sweep and an exact-recovery test (known synthetic kernel) are built in.</td></tr>
+<tr><td><b>G5 · Teaching and reproducibility</b></td><td>Commercial toolboxes are closed and licensed. Hardware testbeds are expensive. Students rarely see the link between equations, code and spectra.</td><td>The project is open source with no dependencies. Every equation in this document maps to a named Swift function. A 66-case Swift Testing suite and a headless profiler make the results reproducible.</td></tr>
+</table>
+<p><b>Contributions.</b> (i) A deterministic, block-continuous simulation of a wideband PA with Wiener–Hammerstein memory. (ii) A symmetric, prunable Volterra kernel layout shared by CPU, GPU and regression paths. (iii) A numerically robust Block-RLS estimator, in double precision with a Cholesky solve and ridge fallback, that matches sample-by-sample RLS to better than −90 dB while running 23× faster at <i>K</i> = 296. (iv) An ILA DPD loop with live ACLR, NMSE and EVM instrumentation. (v) Measured evidence of the cost/accuracy trade-offs of memory depth, pruning, adaptation rate and compute backend (Section 9).</p>
+
+<!-- ============================== 4 ============================== -->
+<h2>4 System architecture</h2>
+<figure>
+<svg viewBox="0 0 760 250" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1b1f24"/></marker></defs>
+  <style>.b{fill:#eaf1fb;stroke:#1f5fbf;stroke-width:1.4;rx:6}.g{fill:#f6f0e6;stroke:#c77700;stroke-width:1.4}.t{font-size:12px;text-anchor:middle}.s{font-size:10px;fill:#5a6370;text-anchor:middle}.l{stroke:#1b1f24;stroke-width:1.3;fill:none;marker-end:url(#a)}</style>
+  <rect class="b" x="10" y="95" width="95" height="50" rx="6"/><text class="t" x="57" y="117">Signal source</text><text class="s" x="57" y="132">QAM / multi-tone</text>
+  <rect class="b" x="160" y="95" width="105" height="50" rx="6"/><text class="t" x="212" y="117">Volterra DPD</text><text class="s" x="212" y="132">vDSP | Metal</text>
+  <rect class="b" x="320" y="95" width="95" height="50" rx="6"/><text class="t" x="367" y="117">Virtual PA</text><text class="s" x="367" y="132">W–H + Rapp/Saleh</text>
+  <rect class="b" x="470" y="95" width="90" height="50" rx="6"/><text class="t" x="515" y="117">Obs. Rx</text><text class="s" x="515" y="132">+AWGN, ÷G</text>
+  <rect class="g" x="440" y="185" width="150" height="50" rx="6"/><text class="t" x="515" y="207">Post-inverse ID</text><text class="s" x="515" y="222">NLMS / RLS / Block RLS</text>
+  <rect class="b" x="320" y="10" width="95" height="50" rx="6"/><text class="t" x="367" y="32">Reference PA</text><text class="s" x="367" y="47">no DPD</text>
+  <rect class="g" x="615" y="70" width="135" height="100" rx="6"/><text class="t" x="682" y="98">Analysis</text><text class="s" x="682" y="116">Welch PSD (zrip)</text><text class="s" x="682" y="131">ACLR · NMSE</text><text class="s" x="682" y="146">EVM · constellation</text>
+  <path class="l" d="M105,120 L158,120"/><text class="s" x="120" y="112">u</text>
+  <path class="l" d="M265,120 L318,120"/><text class="s" x="292" y="112">z</text>
+  <path class="l" d="M415,120 L468,120"/><text class="s" x="442" y="112">y</text>
+  <path class="l" d="M560,120 L613,120"/><text class="s" x="587" y="112">ỹ</text>
+  <path class="l" d="M135,120 L135,35 L318,35"/>
+  <path class="l" d="M415,35 L682,35 L682,68"/>
+  <path class="l" d="M515,145 L515,183"/>
+  <path class="l" d="M292,120 L292,225 L438,225"/><text class="s" x="350" y="218">desired = z</text>
+  <path class="l" d="M440,195 L212,195 L212,147"/><text class="s" x="372" y="190">copy coefficients</text>
+  <path class="l" d="M135,120 L135,160 L600,160 L613,150"/>
+</svg>
+<figcaption><b>Figure 1.</b> Live pipeline (<code>LinearizationCore.advance()</code>). The source drives two PA instances, one through the DPD and one uncorrected reference used to estimate <i>G</i> and the "without DPD" curves. The post-inverse is trained on ỹ → <i>z</i>, and its coefficients are copied into the predistorter after each adapting frame.</figcaption>
+</figure>
+<p>The code base (≈6,200 lines of Swift and Metal) is organised into layers with strict value semantics. DSP state lives in <code>Sendable</code> structs, so a stream processed in blocks of any size gives exactly the same result as one long block. This is verified by the "Block continuity" self-check.</p>
+<table>
+<tr><th>Folder</th><th>Key types</th><th>Responsibility</th></tr>
+<tr><td><code>DSP/</code></td><td><code>SignalSynthesizer</code>, <code>StreamingSignalSource</code>, <code>VirtualPowerAmplifier</code>, <code>FIRFilter</code>, <code>WelchSpectrumAnalyzer</code>, <code>DistortionMetrics</code></td><td>Stimulus synthesis, PA models, block-continuous FIR, PSD, ACLR, NMSE, EVM, PAPR</td></tr>
+<tr><td><code>Volterra/</code></td><td><code>VolterraKernelLayout</code>, <code>VolterraKernels</code>, <code>VolterraFilter</code>, <code>VolterraCPUEngine</code>, <code>MetalVolterraEngine</code>, <code>VolterraKernel.metal</code>, <code>VolterraBenchmark</code></td><td>Kernel index map, streaming evaluation on four backends, benchmark and analytical self-checks</td></tr>
+<tr><td><code>Adaptive/</code></td><td><code>AdaptiveVolterraIdentifier</code>, <code>RegressorRows</code>, <code>IdentificationExperiment</code>, <code>DPDLoop</code></td><td>NLMS/RLS/Block RLS, learning curves, offline ILA loop</td></tr>
+<tr><td><code>Live/</code></td><td><code>LinearizationCore</code>, <code>LinearizationEngine</code> (actor), <code>HeadlessProfiler</code></td><td>Real-time frame pipeline, backend selection, <code>os_signpost</code> instrumentation</td></tr>
+<tr><td><code>Simulation/</code>, <code>Views/</code></td><td><code>@Observable</code> models, SwiftUI + Swift Charts</td><td>Four tabs: Live Dashboard, Signal &amp; PA, Volterra Engine, Adaptive DPD</td></tr>
+</table>
+<p><b>Concurrency.</b> All DSP runs on the <code>LinearizationEngine</code> actor's executor, off the main thread. The main-actor <code>LiveDashboardModel</code> forwards configuration edits between frames, which keeps them atomic. It paces the engine to about 20 frames/s and publishes immutable <code>LiveSnapshot</code> values to the UI at 10 Hz. Publishing at 20 Hz kept the main thread 44 % busy, versus 26 % at 10 Hz.</p>
+
+<!-- ============================== 5 ============================== -->
+<h2>5 Models and implementation</h2>
+<h3>5.1 Stimulus synthesis</h3>
+<p><b>QAM.</b> Square <i>M</i>-QAM symbols (16 or 64) from a seeded xoshiro256** generator are zero-stuffed by the oversampling factor <i>sps</i> and shaped by a unit-energy root-raised-cosine filter (roll-off β, span 32 symbols). The default is 122.88 MS/s, <i>sps</i> = 6 (20.48 MBd) and β = 0.22, which gives an occupied bandwidth of 24.99 MHz. Truncating the RRC filter sets the stimulus's own spectral floor: a 12-symbol span gives an ideal ACLR of −44 dBc and a 32-symbol span −56 dBc. A long span is therefore essential for the ideal reference to stay well below the DPD residual. <b>Multi-tone.</b> <i>K</i> equal tones snapped to the FFT grid, with Schroeder phases φ<sub>k</sub> = π<i>k</i>²/<i>K</i> to keep the crest factor low [13], so that intermodulation products appear as clean spectral lines. The drive level is set as the RMS amplitude in dBFS. The default is 0.35, or −9.1 dBFS.</p>
+
+<h3>5.2 Virtual power amplifier</h3>
+<div class="eq">Rapp: A(r) = G·r / [1 + (G·r/V<sub>sat</sub>)<sup>2p</sup>]<sup>1/(2p)</sup>,   Φ(r) = A<sub>φ</sub>·(r/B<sub>φ</sub>)<sup>q</sup> / [1 + (r/B<sub>φ</sub>)<sup>q</sup>] <span class="n">(2)</span></div>
+<div class="eq">Saleh: A(r) = α<sub>a</sub>r / (1 + β<sub>a</sub>r²),   Φ(r) = α<sub>φ</sub>r² / (1 + β<sub>φ</sub>r²) <span class="n">(3)</span></div>
+<p>Both are evaluated as a gain <i>g</i>(<i>r</i>) = <i>A</i>(<i>r</i>)/<i>r</i> computed from <i>r</i>² without division, so zero-amplitude samples are well defined. All operations are vectorized with <code>vDSP</code> and <code>vForce</code>. The defaults are <i>G</i> = 1, <i>V</i><sub>sat</sub> = 0.8, <i>p</i> = 2, <i>A</i><sub>φ</sub> = 0.6 rad (34.4°), <i>B</i><sub>φ</sub> = 0.7 and <i>q</i> = 3.5, with Saleh's published TWTA constants [2]. With memory enabled, the PA is Wiener–Hammerstein, <i>H</i><sub>in</sub>(<i>z</i>) → NL → <i>H</i><sub>out</sub>(<i>z</i>), with taps [0.85, 0.22, −0.09, 0.03] and [1.0, −0.12, 0.05]. These model bias/matching dispersion and output-network or thermal low-pass behaviour.</p>
+
+<h3>5.3 Kernel layout, symmetry and pruning</h3>
+<p><code>VolterraKernelLayout</code> maps the multidimensional coordinates to one flat vector, used identically by the regression matrix columns, the vDSP path and the Metal kernel:</p>
+<pre>[h₀] [h₁(0) … h₁(M−1)] [h₃(τ₁,τ₂;τ₃) for τ₁ ∈ 0..&lt;M, τ₂ ∈ τ₁…min(τ₁+D, M−1), τ₃ ∈ 0..&lt;M]</pre>
+<p>The <b>cross-term span</b> <i>D</i> keeps only pairs with |τ₁ − τ₂| ≤ <i>D</i>. Each kept pair keeps its full <i>M</i>-tap run over τ₃, so the per-pair structure that every backend relies on is preserved. Row τ₁ holds min(<i>M</i>−τ₁, <i>D</i>+1) pairs, so the coefficient count is</p>
+<div class="eq">K = [1] + M + M·[(M−D)(D+1) + D(D+1)/2] <span class="n">(4)</span></div>
+<p>For <i>D</i> = <i>M</i>−1 this reduces to <i>M</i> + <i>M</i>²(<i>M</i>+1)/2: <i>K</i> = 44 at <i>M</i> = 4, 296 at <i>M</i> = 8, and 2,192 at <i>M</i> = 16. For <i>D</i> = 0 it is a diagonal "memory-polynomial-like" kernel with <i>K</i> = <i>M</i> + <i>M</i>², for example 72 at <i>M</i> = 8. Pruning trades cross-memory products for speed. It is the same principle as dynamic deviation reduction [8], but along the τ₁–τ₂ axis.</p>
+
+<h3>5.4 Evaluation backends</h3>
+<p>Every evaluator receives an <i>extended</i> block, the previous <i>M</i>−1 samples followed by the <i>N</i> new ones, so a delay τ is a pointer offset of (<i>M</i>−1−τ) and no shifted copies are made.</p>
+<ul>
+<li><b>Scalar reference</b>: literal triple sum of Eq. (1). It is the ground truth for all other paths.</li>
+<li><b>vDSP factored</b> (default): factorizes the cubic sum per pair, <i>y</i>₃(<i>n</i>) = Σ<sub>τ₁≤τ₂</sub> <i>x</i>(<i>n</i>−τ₁)<i>x</i>(<i>n</i>−τ₂)·<i>g</i><sub>τ₁τ₂</sub>(<i>n</i>), where <i>g</i><sub>τ₁τ₂</sub> = Σ<sub>τ₃</sub> <i>h</i>₃(τ₁,τ₂;τ₃)·<i>x</i>*(<i>n</i>−τ₃) is a 1-D complex FIR of the conjugated input. Each pair costs one <code>vDSP_zvmul</code>, one <code>vDSP_zconv</code> and one <code>vDSP_zvma</code>, all on NEON vectors.</li>
+<li><b>Regression Φ·h</b>: builds the <i>N</i>×<i>K</i> regression matrix column by column (column-major split complex), then computes <b>y</b> = Φ<b>h</b> with two real <code>vDSP_mmul</code> products. The same Φ feeds identification.</li>
+<li><b>Metal GPU</b>: a fused compute kernel (<code>volterra_evaluate</code>) with one thread per output sample. Each thread loads its <i>M</i>-sample window and its conjugate into registers, and streams the coefficients from the <code>constant</code> address space. That space is broadcast because every thread reads the same <b>h</b>. Φ is never materialized, and complex multiplies use <code>fma</code>.</li>
+</ul>
+<p>The Phase 2 tab runs five analytical self-checks: <i>P</i> = 1 ≡ FIR, <i>M</i> = 1 ≡ <i>a</i>·<i>x</i> + <i>b</i>·<i>x</i>|<i>x</i>|² (conjugate placement), block continuity, index-map symmetry at <i>M</i> = 16, and Metal ≡ vDSP. All five pass, with errors ≤ 7.5·10⁻⁷ (Figure 9).</p>
+
+<h3>5.5 Adaptive identification</h3>
+<p><code>RegressorRows.build</code> reuses the vectorized Φ builder and transposes it with <code>vDSP_mtrans</code> so that each per-sample regressor is contiguous. All adaptive state is held in <b>double precision</b>, because single-precision RLS lost positive-definiteness of <b>P</b> within a few thousand updates at λ &lt; 1.</p>
+<p><b>RLS</b> computes π = <b>P</b>φ*, <b>k</b> = π/(λ + φ<sup>T</sup>π), <b>h</b> ← <b>h</b> + <b>k</b><i>e</i>, <b>P</b> ← (<b>P</b> − <b>k</b>π<sup>H</sup>)/λ. The rank-1 update is written as two <i>K</i>×2 · 2×<i>K</i> BLAS products instead of 4<i>K</i> vector calls, and Hermitian symmetry is re-imposed every 256 updates.</p>
+<p><b>Block RLS</b> accumulates the exponentially weighted normal equations once per block:</p>
+<div class="eq">R ← λ<sup>N</sup>R + Φ<sup>H</sup>Φ,   b ← λ<sup>N</sup>b + Φ<sup>H</sup>d,   h = (R + δI)<sup>−1</sup>b <span class="n">(5)</span></div>
+<p>Φ<sup>H</sup>Φ and Φ<sup>H</sup><b>d</b> are formed from four real <i>N</i>-deep matrix products. The complex system is solved as the equivalent 2<i>K</i>×2<i>K</i> real symmetric positive-definite system [[<i>R</i><sub>r</sub>, −<i>R</i><sub>i</sub>], [<i>R</i><sub>i</sub>, <i>R</i><sub>r</sub>]] by a vectorized Cholesky factorization. If <i>R</i> is not yet positive definite, which happens in the first blocks, the solve is retried with the ridge δ raised to 10³δ and then 10⁶δ. A block whose error is non-finite or above 10⁸ marks the estimator as diverged. Block RLS reaches the same solution as RLS at block boundaries, to −90 dB in the regression test, and the predistorter is only refreshed at frame boundaries anyway.</p>
+
+<h3>5.6 Closed-loop DPD (indirect learning)</h3>
+<p>Each frame runs these steps. (1) <i>z</i> = DPD(<i>u</i>). (2) <i>y</i> = PA(<i>z</i>), plus observation noise at the receiver SNR (70 dB live, 60 dB in Phase 3). (3) <i>G</i> is estimated as an exponentially weighted least-squares gain ĝ = Σ<i>y</i>·<i>u</i>*/Σ|<i>u</i>|² on the uncorrected reference path, with forgetting 0.9. Including the AM/PM offset in <i>G</i> stops the DPD from trying to undo a constant phase rotation. (4) The post-inverse is adapted with regressors built from ỹ = <i>y</i>/<i>G</i> and desired signal <i>z</i>. (5) Its coefficients are copied into the predistorter, which keeps its own delay line. Both filters start from identity, <i>h</i>₁(0) = 1. The <i>adapt every N frames</i> option runs steps 4–5 on one frame in <i>N</i>. The post-inverse delay line still advances every frame so regressors stay aligned. This mirrors production DPD, where the PA drifts far more slowly than one 33 µs frame. On divergence, the core resets the DPD to identity and shows the status "Reset after divergence" for 30 frames.</p>
+<div class="callout">The forgetting factor must span several blocks. With λ = 0.999 (memory ≈ 1,000 samples) the post-inverse overfits the latest 1,024-sample block, and the frozen predistorter produced PAPR spikes above 20 dB on peaks it had not seen recently. The defaults are therefore λ = 0.9999 (≈ 10,000 samples) and δ = 10⁻².</div>
+
+<h3>5.7 Measurement</h3>
+<p><b>PSD.</b> <code>WelchSpectrumAnalyzer</code> uses 1,024-point Hann-windowed segments with 50 % overlap [12]. <code>vDSP_fft_zrip</code> is a <i>real</i> FFT, so a complex block is transformed as two real FFTs, <i>A</i> = FFT(<i>x</i><sub>I</sub>) and <i>B</i> = FFT(<i>x</i><sub>Q</sub>). The two-sided spectrum is reassembled from Hermitian symmetry, <i>X</i>[<i>k</i>] = <i>A</i>[<i>k</i>] + <i>jB</i>[<i>k</i>] and <i>X</i>[<i>N</i>−<i>k</i>] = <i>A</i>*[<i>k</i>] + <i>jB</i>*[<i>k</i>], which keeps the lower and upper sidebands distinct. The PSD is scaled so that Σ PSD·Δ<i>f</i> equals the mean power. <b>ACLR</b> integrates the main channel (±BW/2) and the two adjacent channels at ±BW spacing, and the worst of the two is reported. <b>NMSE</b> is ‖ỹ − <i>u</i>‖²/‖<i>u</i>‖². <b>Symbol EVM</b> matched-filters all three paths with the RRC pulse, decimates at the symbol instants, and compares against the ideal symbols. The constellation is scaled to the odd-integer grid.</p>
+
+<h3>5.8 Online backend selection</h3>
+<p>A Metal dispatch has a fixed round-trip cost of about 0.3–0.5 ms, and GPU speed depends on its clock state and on CPU contention. Neither a fixed <i>K</i> threshold nor a one-off calibration chose reliably. In some runs, both picked the slower path at <i>M</i> = 8. The core therefore times every DPD-apply call. For <i>K</i> ≥ 128 it alternates backends until each has six samples, discarding the first one as warm-up. It then uses the backend with the lower <b>median</b> of its last eight timings and re-probes the other every 32 frames. A median is used because a mean skewed by a single GPU spike kept the CPU path at <i>M</i> = 12, at 1.2 ms instead of 0.35 ms.</p>
+
+<!-- ============================== 6 ============================== -->
+<h2>6 Setup guide</h2>
+<h3>6.1 Requirements</h3>
+<ul>
+<li>A Mac with Apple Silicon (M1 or later; the figures in this document were produced on an Apple M5), running macOS 27 or later.</li>
+<li>Xcode 27 or later, which includes the Swift 6 toolchain, the Metal compiler and Swift Testing. No package dependencies are needed.</li>
+</ul>
+<h3>6.2 Get, build and run</h3>
+<pre>git clone https://github.com/BonnieMundia/VolterraDSPPredictor.git
+cd VolterraDSPPredictor
+open VolterraDSPPredictor.xcodeproj        # older checkouts: "Untitled Project.xcodeproj"</pre>
+<ol>
+<li>In Xcode, select the <b>VolterraDSPPredictor</b> scheme and the <b>My Mac</b> run destination.</li>
+<li>Under <i>Signing &amp; Capabilities</i>, choose your own team, or <i>Sign to Run Locally</i>. The app is sandboxed and needs no special entitlements.</li>
+<li>Press <b>⌘R</b>. The window opens on the <i>Live Dashboard</i> and the loop starts immediately.</li>
+<li>For representative timings, switch to the <b>Release</b> configuration (<i>Product ▸ Scheme ▸ Edit Scheme ▸ Run ▸ Build Configuration</i>). Debug builds are several times slower in Swift-heavy stages.</li>
+</ol>
+<h3>6.3 Tests</h3>
+<p><b>Product ▸ Test</b> (⌘U) runs the Swift Testing suite: 66 cases covering kernel layout, backend equivalence, block continuity, PSD scaling, exact RLS/Block-RLS recovery and NLMS convergence. Build the app before testing, because the test target has no explicit target dependency.</p>
+<h3>6.4 Headless profiling and Instruments</h3>
+<pre>xcodebuild -project VolterraDSPPredictor.xcodeproj -scheme VolterraDSPPredictor \
+  -configuration Release -destination 'platform=macOS' -derivedDataPath /tmp/VolterraRelease build
+/tmp/VolterraRelease/Build/Products/Release/VolterraDSPPredictor.app/Contents/MacOS/VolterraDSPPredictor --profile 160</pre>
+<p>The <code>--profile N</code> flag runs 14 preset configurations for <i>N</i> frames each, with no UI. It treats the first quarter of the frames as warm-up and prints the mean per-stage time, throughput, real-time factor, ACLR before and after DPD, and the selected backend (Table 3). Each stage is also emitted as an <code>os_signpost</code> interval under <i>Points of Interest</i>, so a Time Profiler trace in Instruments shows <i>Source / DPD apply / Virtual PA / Adapt / Analysis</i> regions. Measure UI load on a standalone launch. Sessions launched from Xcode showed about 3× the main-thread load of the same build launched directly.</p>
+<h3>6.5 Scripting your own experiments</h3>
+<p>All engines are plain value types, so batch studies can be written as Swift Testing cases or small command-line targets without touching the UI:</p>
+<pre>var config = LiveConfiguration()
+config.amplifier.model = .saleh                 // plant
+config.signal.kind = .qam64
+config.volterra = VolterraConfiguration(memoryDepth: 8, order: .third, maxPairSpan: 1)
+config.adaptation.algorithm = .blockRLS
+config.adaptationInterval = 8                    // adapt on 1 frame in 8
+
+var core = LinearizationCore(configuration: config, metal: MetalVolterraEngine())
+var snapshot = core.advance()
+for _ in 0..&lt;160 { snapshot = core.advance() }
+print(snapshot.aclrWithoutDPD.worstDBc, snapshot.aclrWithDPD.worstDBc, snapshot.nmseWithDPD)
+
+// Offline counterparts:
+let runs = IdentificationExperiment.sweep(IdentificationConfiguration(), signal: .init(), amplifier: .init())
+let dpd  = DPDLoop.run(signal: .init(), amplifier: .init(), dpd: DPDConfiguration())</pre>
+
+<!-- ============================== 7 ============================== -->
+<h2>7 Using the application</h2>
+<p>The window has four tabs. Each tab has a control sidebar on the left and results on the right. All figures in this document are renders of the application's own views, produced from the real engines. Timings inside the screenshots come from a Debug build. Use Section 9 for Release performance.</p>
+<h3>7.1 Live Dashboard (Phase 4)</h3>
+<p>The toolbar has <b>Run/Pause</b> and <b>Reset DPD</b>, which returns the predistorter to identity and restarts identification. Sidebar sections:</p>
+<ul>
+<li><b>DPD</b>: enable predistortion (off = bypass); run or freeze adaptation; order <i>P</i> = 1 or 3; memory depth <i>M</i> (1–16); cross-term span <i>D</i> (0 … full); the resulting coefficient count <i>K</i>.</li>
+<li><b>Adaptation</b>: NLMS / RLS / Block RLS. Step size μ (log slider, 10⁻³–1.5) for NLMS, or forgetting factor λ (log slider on 1−λ, 10⁻⁵–10⁻²) for the RLS variants. <i>Adapt every N frames</i> (1–32). A warning appears when sample-by-sample RLS would be too slow (<i>K</i> &gt; 60).</li>
+<li><b>Stimulus</b>: waveform (multi-tone, 16-QAM, 64-QAM) and RMS drive level (−24 to 0 dBFS).</li>
+<li><b>Virtual power amplifier</b>: Rapp or Saleh; for Rapp, <i>V</i><sub>sat</sub>, knee smoothness <i>p</i> and AM/PM maximum phase; a memory-effects toggle.</li>
+</ul>
+<p>The results pane shows five tiles (ACLR, NMSE, symbol EVM, throughput with real-time factor, DPD status with <i>K</i> and active backend), the Welch PSD of the ideal input, the PA without DPD and the PA with DPD, with the main and adjacent channels shaded; the instantaneous error |ỹ − <i>u</i>|²/<i>P</i><sub>u</sub> over the last ≈ 480 k samples; a matched-filter constellation; and a per-stage time profile.</p>
+<h3>7.2 Signal &amp; PA (Phase 1)</h3>
+<p>Configures the stimulus (waveform, record length 4 k–64 k samples, samples/symbol, roll-off or tone count and span), the drive level, the PA parameters (including AM/PM knee) and the processing block size. The view re-simulates automatically 60 ms after any change and shows NMSE, waveform EVM, PAPR in → out, linear gain, average compression and PA throughput. It also plots the envelope and in-phase waveforms with the gain-normalized PA output overlaid, and the AM/AM and AM/PM scatter against the static model curve. The spread of the scatter around the curve is the visible signature of memory.</p>
+<figure><img src="screenshots/phase1_rapp.png" alt="Signal and PA tab" style="max-width:72%">
+<figcaption><b>Figure 2.</b> Signal &amp; PA tab, default 16-QAM into the Rapp PA with memory: NMSE −23.3 dB, EVM 6.85 %, PAPR compressed from 6.82 to 5.66 dB. The AM/PM scatter spreads well beyond the static curve at low amplitude. This is the dispersion that the Wiener–Hammerstein filters introduce and that a memoryless model cannot represent.</figcaption></figure>
+<h3>7.3 Volterra Engine (Phase 2)</h3>
+<p>Shows the kernel structure (unique coefficients, full-tensor count, symmetry saving, kernel and Φ memory), a heat map of cubic kernel energy per (τ₁, τ₂) for a synthetic PA-like kernel, and a <b>Run benchmark</b> button. The benchmark times every backend for <i>M</i> = 1…16 at the chosen block size, reports µs/block, GPU-only time, MS/s, giga-terms/s and relative error against the scalar reference, marks the GPU crossover depth, and runs the five self-checks.</p>
+<h3>7.4 Adaptive DPD (Phase 3)</h3>
+<p>Offline workbench with shared model and adaptation settings (including regularization δ), plant settings (PA, memory, drive, observation SNR or noiseless) and two experiments. <b>Identify</b> / <b>Compare step sizes</b> fit the forward PA model (target: virtual PA, or a synthetic Volterra system with known coefficients) and plot a-priori learning curves with model NMSE, coefficient error and time. <b>Run DPD loop</b> runs the ILA for 1–16 passes over the record and reports NMSE, EVM, PAPR of <i>u</i> → <i>z</i>, convergence per block, and before/after AM/AM and AM/PM scatter.</p>
+
+<!-- ============================== 8 ============================== -->
+<h2>8 Simulation scenarios</h2>
+<p>Each scenario lists the settings to apply, on top of the defaults in Appendix A, what to observe, and the measured result. All metrics are deterministic for the given seeds. The live values were read after 120–160 frames (≈ 0.5–0.65 M samples).</p>
+
+<h3>S1 — Baseline linearization (default settings)</h3>
+<p><b>Steps.</b> Launch the app; leave all defaults (16-QAM, −9.1 dBFS, Rapp with memory, <i>P</i> = 3, <i>M</i> = 4, <i>K</i> = 44, Block RLS, λ = 0.9999). Wait about 5 s. <b>Observe.</b> The orange (no DPD) spectrum shows shoulders at about −28 dB in both adjacent channels. The blue (DPD) curve drops them by about 14 dB. The error trace settles about 16 dB lower, and the constellation clusters tighten. <b>Result.</b> ACLR −31.7 → −45.3 dBc, NMSE −23.4 → −39.4 dB, symbol EVM 4.89 → 0.69 % (cover figure). The residual sits 11 dB above the ideal stimulus floor (−56.3 dBc), set by fifth- and higher-order products that a <i>P</i> = 3 model cannot cancel.</p>
+
+<h3>S2 — Convergence from a cold start (NLMS vs Block RLS)</h3>
+<p><b>Steps.</b> Select <b>NLMS</b>, set μ = 0.05. Turn <i>Predistortion enabled</i> off for a few seconds, then on again, or press <b>Reset DPD</b>. <b>Observe.</b> The blue error trace starts on the orange line and descends over about 50 k samples (≈ 12 frames) before settling around −38 dB (Figure 3). Repeat with Block RLS: the drop completes within one or two frames, because RLS-type estimators are insensitive to the eigenvalue spread of the strongly correlated, 6× oversampled regressors. <b>Result</b> (NLMS, μ = 0.05): ACLR −31.5 → −44.5 dBc, NMSE −23.3 → −37.7 dB, EVM 5.14 → 0.95 %, about 1.6 dB short of Block RLS in NMSE.</p>
+<figure><img src="screenshots/live_convergence_nlms.png" alt="NLMS convergence" style="max-width:63%">
+<figcaption><b>Figure 3.</b> S2: DPD enabled at sample ≈ 160 k with NLMS (μ = 0.05). The convergence transient is visible in the instantaneous-error panel. Increasing μ speeds it up at the cost of a higher misadjustment floor.</figcaption></figure>
+
+<h3>S3 — Why memory matters (memoryless vs memory DPD)</h3>
+<p><b>Steps.</b> Set <i>M</i> = 1 (<i>K</i> = 2: one linear and one cubic coefficient, i.e. a memoryless AM/AM–AM/PM inverse). Compare with <i>M</i> = 4. <b>Result.</b> With the memory PA, <i>M</i> = 1 still reaches ACLR −45.3 dBc, but NMSE only −30.1 dB and EVM 2.63 %, against −39.4 dB and 0.69 % for <i>M</i> = 4. <b>Interpretation.</b> In this PA most memory sits in the <i>linear</i> filters around the nonlinearity. Linear dispersion distorts the signal in band but does not create out-of-band power, so ACLR barely sees it while NMSE and EVM do. Judging a DPD by ACLR alone can therefore hide a 9 dB in-band deficit, which is why all three metrics are shown side by side.</p>
+
+<h3>S4 — Overdrive and the saturation limit</h3>
+<p><b>Steps.</b> Raise the RMS drive to −4 dBFS (or lower <i>V</i><sub>sat</sub>). Set <i>M</i> = 6 (<i>K</i> = 132). <b>Result.</b> ACLR −23.3 → −27.3 dBc, NMSE −16.0 → −20.7 dB, EVM 11.1 → 6.1 % (Figure 4). <b>Interpretation.</b> DPD can only expand peaks up to the PA's saturated output. Beyond it, no input produces the required output, and the predistorter's own bandwidth expansion raises the far-out spectrum above the uncorrected PA at ±50 MHz. This scenario shows the practical operating envelope: in a real design, DPD is combined with crest-factor reduction and a few dB of back-off.</p>
+<figure><img src="screenshots/live_overdrive.png" alt="Overdrive scenario" style="max-width:63%">
+<figcaption><b>Figure 4.</b> S4: −4 dBFS drive into the Rapp PA. Only 4 dB of ACLR is recovered, the clusters remain wide, and the DPD trace (blue) rises above the uncorrected spectrum in the far-out region, a signature of peak expansion into hard saturation.</figcaption></figure>
+
+<h3>S5 — Multi-tone intermodulation</h3>
+<p><b>Steps.</b> Set waveform to <b>Multi-Tone</b> (8 Schroeder-phased tones over 20 MHz). <b>Observe.</b> Each third-order product 2<i>f</i><sub>i</sub> − <i>f</i><sub>j</sub> appears as a discrete line on the 2.86 MHz grid, and fifth-order lines extend further out. The ideal trace has no out-of-band power at all (ideal ACLR −145 dBc), so every line is PA-generated. <b>Result.</b> ACLR −29.2 → −46.3 dBc; NMSE −22.5 → −40.6 dB (Figure 5). Close-in IMD3 lines fall by 15–20 dB, while the distant IMD5/7 lines change much less, which again reflects the <i>P</i> = 3 truncation. The constellation panel shows "QAM only" for this waveform.</p>
+<figure><img src="screenshots/live_multitone.png" alt="Multi-tone scenario" style="max-width:63%">
+<figcaption><b>Figure 5.</b> S5: 8-tone stimulus. The ideal input (green) has no out-of-band content, so every spectral line outside the main channel is an intermodulation product. DPD suppresses the inner (third-order) lines most strongly.</figcaption></figure>
+
+<h3>S6 — A different PA and denser constellation, with pruning and decimated adaptation</h3>
+<p><b>Steps.</b> PA model <b>Saleh (TWTA)</b>; waveform <b>64-QAM</b>; drive −12 dBFS; <i>M</i> = 8; <i>D</i> = 1 (<i>K</i> = 128 instead of 296); <i>Adapt every 8 frames</i>. <b>Result.</b> ACLR −30.0 → −44.5 dBc, NMSE −21.8 → −38.5 dB, EVM 6.06 → 0.74 % (Figure 6). On the default Rapp scenario, Table 3 shows that pruning to <i>D</i> = 1 or even <i>D</i> = 0, and adapting on one frame in eight, leave the ACLR unchanged. The oversampled stimulus makes cross products nearly collinear with diagonal terms. That will not hold for every PA or stimulus, so the default remains unpruned.</p>
+<figure><img src="screenshots/live_saleh_64qam.png" alt="Saleh 64-QAM scenario" style="max-width:63%">
+<figcaption><b>Figure 6.</b> S6: Saleh TWTA, 64-QAM, <i>M</i> = 8, <i>D</i> = 1, adapting on 1 frame in 8. The 64-point constellation is fully resolved after DPD.</figcaption></figure>
+
+<h3>S7 — Offline identification and the closed DPD loop (Adaptive DPD tab)</h3>
+<p><b>Steps (a): forward model and DPD on the virtual PA.</b> Open the Adaptive DPD tab and keep the defaults (target <i>Virtual PA</i>, 16,384 samples, 60 dB observation SNR). Press <b>Compare step sizes</b>, then <b>Run DPD loop</b>. <b>Result</b> (Figure 7). In the forward-model fit, NLMS reaches a model NMSE of −36.2 to −38.2 dB across μ = 0.05 to 1.0, and RLS reaches −42.2 dB. A <i>P</i> = 3, <i>M</i> = 4 model cannot represent this PA exactly, so these are model-mismatch floors. The ILA loop converges within the first block and improves NMSE from −23.3 to −39.3 dB (16.0 dB) and EVM from 6.85 to 1.08 %. The predistorted signal's PAPR rises from 6.82 to 7.99 dB, because the DPD expands peaks to pre-compensate compression. After DPD, the AM/AM scatter collapses onto a straight line and the AM/PM scatter onto 0°.</p>
+<figure><img src="screenshots/phase3_dpd.png" alt="Adaptive DPD tab" style="max-width:60%">
+<figcaption><b>Figure 7.</b> S7a: Adaptive DPD tab after <i>Compare step sizes</i> and <i>Run DPD loop</i>. Top: a-priori learning curves for four NLMS step sizes and RLS. Middle: per-block NMSE of the closed loop. Bottom: AM/AM and AM/PM of y/G before (orange) and after (blue) DPD.</figcaption></figure>
+<p><b>Steps (b): exact recovery of a known Volterra system.</b> Choose target <b>Synthetic Volterra (exact)</b>, turn <i>Noiseless observation</i> on, and press <b>Compare step sizes</b>. With the tab's default stimulus (6× oversampled, β = 0.22), about 80 % of the simulated band is empty, so Φ<sup>H</sup>Φ is ill-conditioned. The ridge δ = 10⁻² then visibly biases the weakly excited coefficients: RLS shows −15.9 dB coefficient error although its output model is accurate. Exact recovery needs full-band excitation. The regression test <code>IdentificationTests/exactRecovery</code> uses 2 samples/symbol, β = 1, λ = 1 and δ = 10⁻⁶; run it from the Test navigator, or call <code>IdentificationExperiment.sweep</code> with that configuration (Section 6.5). <b>Result</b> (Figure 8). RLS and Block RLS both recover the coefficients to <b>−119.7 dB</b> (model NMSE −139.5 dB), which is the single-precision limit of the stored <b>h</b>. NLMS stops at −15 to −22 dB coefficient error after 16 k samples. Block RLS solves the problem in 13 ms against 83 ms for RLS. Its learning curve sits at 0 dB for the first block, because it predicts each block with the previous block's solution, which starts at zero. <b>Lesson.</b> This is the persistence-of-excitation trade-off in practice [10, 17]. A DPD can be accurate on the signal it sees while its individual coefficients remain poorly determined.</p>
+<figure><img src="screenshots/phase3_synthetic.png" alt="Exact identification" style="max-width:63%">
+<figcaption><b>Figure 8.</b> S7b: learning curves on the synthetic system with full-band excitation. RLS and Block RLS reach the −140 dB numerical floor, while NLMS saturates between −41 and −55 dB.</figcaption></figure>
+
+<h3>S8 — Benchmarking the evaluation backends</h3>
+<p><b>Steps.</b> Volterra Engine tab → Order <i>P</i> = 3, block size 4,096 → <b>Run benchmark</b>. <b>Result</b> (Table 2, Figure 9). vDSP-factored is fastest up to <i>M</i> = 8. The Metal kernel has an almost flat cost of 0.3–0.9 ms, dominated by dispatch round trip, and wins from <i>M</i> = 10, reaching 4.2× the CPU at <i>M</i> = 16. The regression path is 2–6× slower than vDSP-factored for evaluation alone, but it is the form identification needs. All backends agree with the scalar reference to ≤ 1.8·10⁻⁶.</p>
+<table>
+<tr><th>M</th><th class="r">K</th><th class="r">vDSP factored (µs)</th><th class="r">Regression Φ·h (µs)</th><th class="r">Metal GPU (µs)</th><th class="r">Best (MS/s)</th><th>Winner</th></tr>
+<tr><td>1</td><td class="r">2</td><td class="r">20</td><td class="r">48</td><td class="r">319</td><td class="r">204</td><td>vDSP</td></tr>
+<tr><td>4</td><td class="r">44</td><td class="r">88</td><td class="r">327</td><td class="r">313</td><td class="r">46.8</td><td>vDSP</td></tr>
+<tr><td>6</td><td class="r">132</td><td class="r">229</td><td class="r">914</td><td class="r">454</td><td class="r">17.9</td><td>vDSP</td></tr>
+<tr><td>8</td><td class="r">296</td><td class="r">437</td><td class="r">1,991</td><td class="r">654</td><td class="r">9.4</td><td>vDSP</td></tr>
+<tr><td>10</td><td class="r">560</td><td class="r">820</td><td class="r">3,795</td><td class="r">458</td><td class="r">8.9</td><td>Metal</td></tr>
+<tr><td>12</td><td class="r">948</td><td class="r">1,289</td><td class="r">6,791</td><td class="r">559</td><td class="r">7.3</td><td>Metal</td></tr>
+<tr><td>16</td><td class="r">2,192</td><td class="r">2,841</td><td class="r">16,951</td><td class="r">671</td><td class="r">6.1</td><td>Metal</td></tr>
+</table>
+<p class="small"><b>Table 2.</b> Best-of-3 wall time per 4,096-sample block on an Apple M5, including all host-side work, measured with the in-app benchmark. The time is dominated by Accelerate and Metal, which run optimized code in every build configuration. Only the scalar reference (not shown) depends strongly on the build configuration.</p>
+<figure><img src="screenshots/phase2_benchmark.png" alt="Phase 2 benchmark" style="max-width:58%">
+<figcaption><b>Figure 9.</b> S8: Volterra Engine tab after <i>Run benchmark</i> at <i>N</i> = 4,096. Kernel-energy heat map, throughput against memory depth (log scale), the five passing self-checks, and the per-backend result table. Metal overtakes vDSP from <i>M</i> = 10.</figcaption></figure>
+
+<h3>S9 — Throughput tuning with the headless profiler</h3>
+<p><b>Steps.</b> Build Release and run <code>--profile 160</code> (Section 6.4). Then reproduce the most interesting rows interactively by changing the algorithm, <i>M</i>, <i>D</i> and <i>Adapt every N</i> while watching the per-stage profile. <b>Result.</b> See Table 3 and Section 9.</p>
+
+<!-- ============================== 9 ============================== -->
+<h2>9 Performance results</h2>
+<table>
+<tr><th>Configuration (Release, Apple M5, 4,096-sample frames)</th><th class="r">K</th><th class="r">Frame (ms)</th><th class="r">MS/s</th><th class="r">DPD apply (ms)</th><th class="r">Adapt (ms)</th><th class="r">ACLR no DPD → DPD (dBc)</th><th>Backend</th></tr>
+<tr><td>NLMS, M = 4</td><td class="r">44</td><td class="r">0.83</td><td class="r">4.92</td><td class="r">0.072</td><td class="r">0.44</td><td class="r">−31.7 → −44.9</td><td>vDSP</td></tr>
+<tr><td>RLS, M = 4</td><td class="r">44</td><td class="r">25.8</td><td class="r">0.16</td><td class="r">0.069</td><td class="r">25.4</td><td class="r">−31.7 → −45.6</td><td>vDSP</td></tr>
+<tr><td>Block RLS, M = 4</td><td class="r">44</td><td class="r">1.08</td><td class="r">3.78</td><td class="r">0.067</td><td class="r">0.68</td><td class="r">−31.7 → −45.6</td><td>vDSP</td></tr>
+<tr><td>Block RLS, M = 4, adapt 1/8</td><td class="r">44</td><td class="r">0.48</td><td class="r">8.48</td><td class="r">0.067</td><td class="r">0.086</td><td class="r">−31.7 → −45.6</td><td>vDSP</td></tr>
+<tr><td>RLS, M = 8</td><td class="r">296</td><td class="r">348.7</td><td class="r">0.01</td><td class="r">0.43</td><td class="r">348.0</td><td class="r">−31.7 → −45.2</td><td>vDSP</td></tr>
+<tr><td>Block RLS, M = 8</td><td class="r">296</td><td class="r">15.3</td><td class="r">0.27</td><td class="r">0.41</td><td class="r">14.6</td><td class="r">−31.7 → −45.6</td><td>vDSP</td></tr>
+<tr><td>Block RLS, M = 8, adapt 1/8</td><td class="r">296</td><td class="r">2.56</td><td class="r">1.60</td><td class="r">0.40</td><td class="r">1.83</td><td class="r">−31.7 → −45.6</td><td>vDSP</td></tr>
+<tr><td>Block RLS, M = 8, D = 1, adapt 1/8</td><td class="r">128</td><td class="r">1.03</td><td class="r">4.00</td><td class="r">0.19</td><td class="r">0.51</td><td class="r">−31.7 → −45.6</td><td>vDSP</td></tr>
+<tr><td>Block RLS, M = 8, D = 0, adapt 1/8</td><td class="r">72</td><td class="r">0.58</td><td class="r">7.03</td><td class="r">0.097</td><td class="r">0.16</td><td class="r">−31.7 → −45.6</td><td>vDSP</td></tr>
+<tr><td>Frozen DPD, M = 12 (apply only)</td><td class="r">948</td><td class="r">0.73</td><td class="r">5.61</td><td class="r">0.40</td><td class="r">—</td><td class="r">—</td><td>Metal</td></tr>
+<tr><td>Frozen DPD, M = 16 (apply only)</td><td class="r">2,192</td><td class="r">0.89</td><td class="r">4.59</td><td class="r">0.56</td><td class="r">—</td><td class="r">—</td><td>Metal</td></tr>
+</table>
+<p class="small"><b>Table 3.</b> Output of <code>--profile 160</code> (mean of raw per-frame times after 40 warm-up frames). The remaining stages are constant: source ≈ 0.034 ms, two PA paths ≈ 0.105 ms, analysis ≈ 0.19 ms.</p>
+<p><b>Findings.</b> (1) <b>Block RLS is the right default.</b> It is 24× faster than RLS at <i>K</i> = 44 and 23× faster at <i>K</i> = 296, with identical ACLR. (2) Sample-by-sample RLS scales as O(<i>K</i>²) per sample and misses a 50 ms frame budget above <i>K</i> ≈ 60, which is why the UI warns at that point. (3) <b>Adapting on 1 frame in 8</b> cuts the M = 8 frame from 15.3 to 2.6 ms with no ACLR loss. (4) <b>Pruning to D = 0</b> reduces <i>K</i> from 296 to 72 and the frame to 0.58 ms, 26× faster than full-rate, full-kernel Block RLS, at the same ACLR on this PA. (5) The online selector correctly moves DPD-apply to Metal at <i>M</i> ≥ 12 and keeps vDSP below. (6) The best full closed-loop throughput is about 8.5 MS/s, a real-time factor of 0.07 at 122.88 MS/s. Applying the frozen predistorter is cheaper than everything else in the frame (the PA paths and analysis exist only in simulation), so in a deployed system the per-sample cost is the DPD-apply column: 0.067 ms per 4,096 samples, or about 61 MS/s on one CPU core for <i>K</i> = 44.</p>
+
+<!-- ============================== 10 ============================== -->
+<h2>10 Discussion, limitations and future work</h2>
+<p><b>What the results show.</b> A third-order Volterra DPD with modest memory (<i>K</i> = 44) recovers about 14 dB of ACLR and 16 dB of NMSE on a realistic memory PA. The full kernel is affordable on a laptop-class SoC when it is adapted as a block least-squares problem, adapted sparsely in time, and evaluated in factored form. The choice between CPU vector units and the GPU is workload-dependent and is best made online.</p>
+<p><b>Limitations.</b></p>
+<ul>
+<li><b>Simulation only.</b> The PA is behavioural, with no measured device, no thermal drift model and no load-pull dependence. Real PAs also need higher odd orders (<i>P</i> = 5, 7) and show long-term memory.</li>
+<li><b>Order truncation.</b> Only <i>P</i> ≤ 3 is implemented, which sets the 10–11 dB gap to the ideal floor in S1 and the limited IMD5 suppression in S5.</li>
+<li><b>Not real-time at RF rates.</b> The end-to-end loop processes 0.3–8.5 MS/s, against a simulated 122.88 MS/s. "Live" means continuous streaming with interactive control, not line-rate operation.</li>
+<li><b>Idealized feedback.</b> The observation path is perfectly time-aligned and has no gain or phase imbalance, aliasing or quantization beyond additive noise at a set SNR.</li>
+<li><b>ILA bias.</b> The indirect learning architecture is biased by noise on ỹ. Direct learning or iterative learning control can do better [21].</li>
+</ul>
+<p><b>Future work.</b> (1) Fifth-order kernels and GMP/DDR baselines for side-by-side comparison [4, 8]. (2) Orthogonal polynomial bases or QR-RLS to improve conditioning with oversampled stimuli [17]. (3) A hardware-in-the-loop path, for example RFWebLab measurements or an SDR transmitter with an observation receiver. (4) Direct learning and neural-network DPD running on the Neural Engine. (5) Batched Metal adaptation for very large <i>K</i>. (6) Crest-factor reduction ahead of the DPD to explore the S4 operating envelope.</p>
+
+<!-- ============================== REFS ============================== -->
+<h2>References</h2>
+<div class="refs">
+<p>[1] M. Schetzen, <i>The Volterra and Wiener Theories of Nonlinear Systems</i>. New York: Wiley, 1980.</p>
+<p>[2] A. A. M. Saleh, "Frequency-independent and frequency-dependent nonlinear models of TWT amplifiers," <i>IEEE Trans. Commun.</i>, vol. 29, no. 11, pp. 1715–1720, Nov. 1981.</p>
+<p>[3] C. Rapp, "Effects of HPA-nonlinearity on a 4-DPSK/OFDM-signal for a digital sound broadcasting system," in <i>Proc. 2nd European Conf. Satellite Communications</i>, Liège, 1991, pp. 179–184.</p>
+<p>[4] D. R. Morgan, Z. Ma, J. Kim, M. G. Zierdt, and J. Pastalan, "A generalized memory polynomial model for digital predistortion of RF power amplifiers," <i>IEEE Trans. Signal Process.</i>, vol. 54, no. 10, pp. 3852–3860, Oct. 2006.</p>
+<p>[5] J. Kim and K. Konstantinou, "Digital predistortion of wideband signals based on power amplifier model with memory," <i>Electron. Lett.</i>, vol. 37, no. 23, pp. 1417–1418, Nov. 2001.</p>
+<p>[6] L. Ding, G. T. Zhou, D. R. Morgan, Z. Ma, J. S. Kenney, J. Kim, and C. R. Giardina, "A robust digital baseband predistorter constructed using memory polynomials," <i>IEEE Trans. Commun.</i>, vol. 52, no. 1, pp. 159–165, Jan. 2004.</p>
+<p>[7] C. Eun and E. J. Powers, "A new Volterra predistorter based on the indirect learning architecture," <i>IEEE Trans. Signal Process.</i>, vol. 45, no. 1, pp. 223–227, Jan. 1997.</p>
+<p>[8] A. Zhu, J. C. Pedro, and T. J. Brazil, "Dynamic deviation reduction-based Volterra behavioral modeling of RF power amplifiers," <i>IEEE Trans. Microw. Theory Techn.</i>, vol. 54, no. 12, pp. 4323–4332, Dec. 2006.</p>
+<p>[9] F. M. Ghannouchi and O. Hammi, "Behavioral modeling and predistortion," <i>IEEE Microw. Mag.</i>, vol. 10, no. 7, pp. 52–64, Dec. 2009.</p>
+<p>[10] S. Haykin, <i>Adaptive Filter Theory</i>, 5th ed. Upper Saddle River, NJ: Pearson, 2014.</p>
+<p>[11] A. H. Sayed, <i>Fundamentals of Adaptive Filtering</i>. Hoboken, NJ: Wiley-IEEE Press, 2003.</p>
+<p>[12] P. D. Welch, "The use of fast Fourier transform for the estimation of power spectra: A method based on time averaging over short, modified periodograms," <i>IEEE Trans. Audio Electroacoust.</i>, vol. 15, no. 2, pp. 70–73, Jun. 1967.</p>
+<p>[13] M. R. Schroeder, "Synthesis of low-peak-factor signals and binary sequences with low autocorrelation," <i>IEEE Trans. Inf. Theory</i>, vol. 16, no. 1, pp. 85–89, Jan. 1970.</p>
+<p>[14] 3GPP TS 38.104, "NR; Base Station (BS) radio transmission and reception," 3rd Generation Partnership Project, Technical Specification (ACLR requirements, clause 6.6.3).</p>
+<p>[15] J. C. Pedro and S. A. Maas, "A comparative overview of microwave and wireless power-amplifier behavioral modeling approaches," <i>IEEE Trans. Microw. Theory Techn.</i>, vol. 53, no. 4, pp. 1150–1163, Apr. 2005.</p>
+<p>[16] S. C. Cripps, <i>RF Power Amplifiers for Wireless Communications</i>, 2nd ed. Norwood, MA: Artech House, 2006.</p>
+<p>[17] R. Raich, H. Qian, and G. T. Zhou, "Orthogonal polynomials for power amplifier modeling and predistorter design," <i>IEEE Trans. Veh. Technol.</i>, vol. 53, no. 5, pp. 1468–1479, Sep. 2004.</p>
+<p>[18] A. S. Tehrani, H. Cao, S. Afsardoost, T. Eriksson, M. Isaksson, and C. Fager, "A comparative analysis of the complexity/accuracy tradeoff in power amplifier behavioral models," <i>IEEE Trans. Microw. Theory Techn.</i>, vol. 58, no. 6, pp. 1510–1520, Jun. 2010.</p>
+<p>[19] Apple Inc., "Accelerate — vDSP," Apple Developer Documentation, developer.apple.com/documentation/accelerate/vdsp.</p>
+<p>[20] Apple Inc., "Metal Shading Language Specification," developer.apple.com/metal.</p>
+<p>[21] L. Guan and A. Zhu, "Green communications: Digital predistortion for wideband RF power amplifiers," <i>IEEE Microw. Mag.</i>, vol. 15, no. 7, pp. 84–99, Nov.–Dec. 2014.</p>
+</div>
+
+<!-- ============================== APPENDIX ============================== -->
+<h2>Appendix A — Parameter reference (defaults)</h2>
+<table>
+<tr><th>Group</th><th>Parameter</th><th>Default</th><th>Range in UI</th><th>Source</th></tr>
+<tr><td rowspan="5">Stimulus</td><td>Sample rate</td><td>122.88 MS/s</td><td>fixed</td><td rowspan="5"><code>SignalConfiguration</code></td></tr>
+<tr><td>Waveform / samples per symbol / roll-off</td><td>16-QAM / 6 / 0.22</td><td>MT, 16-, 64-QAM / 2–16 / 0.05–1</td></tr>
+<tr><td>RRC span</td><td>32 symbols</td><td>—</td></tr>
+<tr><td>Tones / span (multi-tone)</td><td>8 / 20 MHz</td><td>2–64 / 1–60 MHz</td></tr>
+<tr><td>RMS drive</td><td>0.35 (−9.1 dBFS)</td><td>−30…0 dBFS (live −24…0)</td></tr>
+<tr><td rowspan="4">PA</td><td>Model</td><td>Rapp</td><td>Rapp, Saleh</td><td rowspan="4"><code>PAConfiguration</code></td></tr>
+<tr><td>Rapp G / V<sub>sat</sub> / p</td><td>1.0 / 0.8 / 2.0</td><td>— / 0.2–1.5 / 0.5–8</td></tr>
+<tr><td>AM/PM A<sub>φ</sub> / B<sub>φ</sub> / q</td><td>34.4° / 0.7 / 3.5</td><td>0–90° / 0.1–1.5 / —</td></tr>
+<tr><td>Memory H<sub>in</sub>, H<sub>out</sub></td><td>[0.85 0.22 −0.09 0.03], [1 −0.12 0.05]</td><td>on/off</td></tr>
+<tr><td rowspan="2">Volterra</td><td>Order P / memory M / span D</td><td>3 / 4 / full</td><td>1, 3 / 1–16 / 0…M−1</td><td rowspan="2"><code>VolterraConfiguration</code></td></tr>
+<tr><td>Constant term h₀</td><td>off</td><td>Phase 2 only</td></tr>
+<tr><td rowspan="3">Adaptation</td><td>Algorithm (live, Phase 3 DPD)</td><td>Block RLS</td><td>NLMS, RLS, Block RLS</td><td rowspan="3"><code>AdaptationParameters</code></td></tr>
+<tr><td>λ / δ (live and DPD)</td><td>0.9999 / 10⁻²</td><td>1−λ: 10⁻⁵…10⁻² / δ: 10⁻⁶…1</td></tr>
+<tr><td>NLMS μ / ε</td><td>0.25 / 10⁻⁶</td><td>10⁻³…1.5</td></tr>
+<tr><td rowspan="3">Live loop</td><td>Frame size / adapt every</td><td>4,096 / 1</td><td>— / 1–32</td><td rowspan="3"><code>LiveConfiguration</code></td></tr>
+<tr><td>Feedback SNR</td><td>70 dB</td><td>—</td></tr>
+<tr><td>Engine / UI rate</td><td>≈ 20 Hz / 10 Hz</td><td>—</td></tr>
+<tr><td rowspan="2">Phase 3</td><td>Record / block / passes</td><td>16,384 / 1,024 / 4</td><td>4 k–64 k / — / 1–16</td><td rowspan="2"><code>Phase3Model</code></td></tr>
+<tr><td>Observation SNR</td><td>60 dB</td><td>20–100 dB or noiseless</td></tr>
+</table>
+
+</body>
+</html>
