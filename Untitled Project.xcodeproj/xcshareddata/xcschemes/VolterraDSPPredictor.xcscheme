@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "000000000000000100000000"
-               BuildableName = "MyApp.app"
+               BuildableName = "VolterraDSPPredictor.app"
                BlueprintName = "MyApp"
                ReferencedContainer = "container:Untitled Project.xcodeproj">
             </BuildableReference>
@@ -70,7 +70,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "000000000000000100000000"
-            BuildableName = "MyApp.app"
+            BuildableName = "VolterraDSPPredictor.app"
             BlueprintName = "MyApp"
             ReferencedContainer = "container:Untitled Project.xcodeproj">
          </BuildableReference>
@@ -87,7 +87,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "000000000000000100000000"
-            BuildableName = "MyApp.app"
+            BuildableName = "VolterraDSPPredictor.app"
             BlueprintName = "MyApp"
             ReferencedContainer = "container:Untitled Project.xcodeproj">
          </BuildableReference>

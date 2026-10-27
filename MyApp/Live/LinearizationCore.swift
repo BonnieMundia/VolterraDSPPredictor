@@ -189,11 +189,13 @@ nonisolated struct LinearizationCore: Sendable {
     /// a fixed ≈ 0.3–0.5 ms round trip, and GPU speed depends on its clock state and on
     /// CPU contention, so neither a fixed K threshold nor a one-off calibration picks
     /// reliably (both chose the slower path at M = 8 on an M5 in some runs). Instead,
-    /// every frame's apply time updates a per-backend average, both backends are tried
-    /// on the first frames, and the slower one is re-probed every 128 frames.
+    /// every frame's apply time is recorded per backend, both backends are tried on the
+    /// first frames, and the other one is re-probed every 32 frames. The cost is the
+    /// median of recent samples: Metal round trips spike occasionally, and a mean
+    /// skewed by one spike kept the CPU path at M = 12 (1.2 ms instead of 0.35 ms).
     private(set) var backend: VolterraBackend = .vDSPFactored
     private var backendKey: BackendKey?
-    private var applyCost: [VolterraBackend: Double] = [:]
+    private var applyHistory: [VolterraBackend: [Double]] = [:]
     private var applySamples: [VolterraBackend: Int] = [:]
     private var framesSinceProbe = 0
 
@@ -204,9 +206,9 @@ nonisolated struct LinearizationCore: Sendable {
 
     /// Smallest K for which the GPU is considered; below it vDSP always wins.
     static let metalCandidateTermCount = 128
-    static let backendExplorationSamples = 4
-    static let backendProbeInterval = 128
-    static let backendCostSmoothing = 0.2
+    static let backendExplorationSamples = 6
+    static let backendProbeInterval = 32
+    static let backendHistoryLength = 8
 
     private var backendCandidates: [VolterraBackend] {
         metal != nil && layout.order == .third && layout.termCount >= Self.metalCandidateTermCount
@@ -218,7 +220,7 @@ nonisolated struct LinearizationCore: Sendable {
         let key = BackendKey(layout: layout, frameSize: frameSize)
         if key != backendKey {
             backendKey = key
-            applyCost.removeAll(); applySamples.removeAll(); framesSinceProbe = 0
+            applyHistory.removeAll(); applySamples.removeAll(); framesSinceProbe = 0
         }
         let candidates = backendCandidates
         guard candidates.count > 1 else { backend = .vDSPFactored; return .vDSPFactored }
@@ -228,7 +230,7 @@ nonisolated struct LinearizationCore: Sendable {
            (applySamples[next] ?? 0) < Self.backendExplorationSamples {
             return next
         }
-        let best = candidates.min { (applyCost[$0] ?? .infinity) < (applyCost[$1] ?? .infinity) } ?? .vDSPFactored
+        let best = candidates.min { applyCost($0) < applyCost($1) } ?? .vDSPFactored
         backend = best
         framesSinceProbe += 1
         if framesSinceProbe >= Self.backendProbeInterval {
@@ -242,8 +244,18 @@ nonisolated struct LinearizationCore: Sendable {
         let count = applySamples[backend, default: 0]
         applySamples[backend] = count + 1
         guard count > 0 else { return }     // first run per backend includes pipeline/buffer warm-up
-        let a = Self.backendCostSmoothing
-        applyCost[backend] = applyCost[backend].map { (1 - a) * $0 + a * seconds } ?? seconds
+        var history = applyHistory[backend, default: []]
+        history.append(seconds)
+        if history.count > Self.backendHistoryLength { history.removeFirst(history.count - Self.backendHistoryLength) }
+        applyHistory[backend] = history
+    }
+
+    /// Median of the recent apply times (∞ until a backend has been measured).
+    private func applyCost(_ backend: VolterraBackend) -> Double {
+        let sorted = (applyHistory[backend] ?? []).sorted()
+        guard !sorted.isEmpty else { return .infinity }
+        let mid = sorted.count / 2
+        return sorted.count.isMultiple(of: 2) ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
     }
 
     // MARK: Control

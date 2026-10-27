@@ -1,7 +1,7 @@
 import Accelerate
 import Foundation
 import Testing
-@testable import MyApp
+@testable import VolterraDSPPredictor
 
 @Suite("Adaptive identification")
 struct IdentificationTests {

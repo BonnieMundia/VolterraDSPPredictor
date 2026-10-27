@@ -25,8 +25,8 @@ actor LinearizationEngine {
 /// `--profile [frames]` launch argument: runs the live pipeline without UI and prints
 /// per-stage timings, so it can be measured in an optimized (Release) build:
 ///
-///     xcodebuild -scheme MyApp -configuration Release build
-///     …/MyApp.app/Contents/MacOS/MyApp --profile 200
+///     xcodebuild -scheme VolterraDSPPredictor -configuration Release build
+///     …/VolterraDSPPredictor.app/Contents/MacOS/VolterraDSPPredictor --profile 200
 ///
 /// Stages are also emitted as os_signpost intervals (Points of Interest) for Instruments.
 nonisolated enum HeadlessProfiler {

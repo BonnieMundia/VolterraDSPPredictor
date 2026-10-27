@@ -1,7 +1,7 @@
 import Accelerate
 import Foundation
 import Testing
-@testable import MyApp
+@testable import VolterraDSPPredictor
 
 @Suite("Welch spectrum analyzer (vDSP_fft_zrip)")
 struct SpectrumTests {

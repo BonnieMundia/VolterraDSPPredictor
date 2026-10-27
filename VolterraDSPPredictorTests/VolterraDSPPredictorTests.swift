@@ -1,6 +1,6 @@
 import Accelerate
 import Testing
-@testable import MyApp
+@testable import VolterraDSPPredictor
 
 // MARK: - Shared helpers
 
